@@ -1,0 +1,61 @@
+[
+  {
+    "name": "My Plan",
+    "plan": {
+      "current_age": 22,
+      "retire_age": 60,
+      "end_age": 90,
+      "state": "MI",
+      "filing_status": "single",
+      "accounts": {
+        "pre_tax": {
+          "balance": 0.0,
+          "contribution": 0.0,
+          "mean_return": 0.05,
+          "stdev_return": 0.1
+        },
+        "roth": {
+          "balance": 11400.0,
+          "contribution": 10400.0,
+          "mean_return": 0.06,
+          "stdev_return": 0.12
+        },
+        "taxable": {
+          "balance": 184300.0,
+          "contribution": 0.0,
+          "mean_return": 0.06,
+          "stdev_return": 0.12
+        },
+        "cash": {
+          "balance": 7300.0
+        }
+      },
+      "income": {
+        "salary": 80000.0,
+        "salary_growth": 0.03
+      },
+      "expenses": {
+        "baseline": 40000.0,
+        "special": []
+      },
+      "assumptions": {
+        "returns_correlated": true
+      },
+      "social_security": {
+        "PIA": 0.0,
+        "claim_age": 67
+      },
+      "roth_conversion": {
+        "annual_cap": 0.0,
+        "start_age": 22,
+        "end_age": 60,
+        "tax_rate": 0.22,
+        "pay_tax_from_taxable": true
+      },
+      "_sim": {
+        "n_paths": 1000
+      }
+    },
+    "ts": 1755210740
+  }
+]

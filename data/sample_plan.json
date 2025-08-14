@@ -1,0 +1,54 @@
+{
+  "current_age": 55,
+  "retire_age": 65,
+  "end_age": 90,
+  "birth_year": 1970,
+  "accounts": {
+    "pre_tax": {
+      "balance": 500000.0,
+      "contribution": 19500.0,
+      "mean_return": 0.05,
+      "stdev_return": 0.10
+    },
+    "roth": {
+      "balance": 100000.0,
+      "contribution": 0.0,
+      "mean_return": 0.06,
+      "stdev_return": 0.12
+    },
+    "taxable": {
+      "balance": 50000.0,
+      "contribution": 0.0,
+      "mean_return": 0.05,
+      "stdev_return": 0.10
+    },
+    "cash": {
+      "balance": 20000.0
+    }
+  },
+  "income": {
+    "salary": 120000.0,
+    "part_time": 0.0,
+    "rental": 0.0,
+    "pensions": []
+  },
+  "expenses": {
+    "baseline": 60000.0
+  },
+  "assumptions": {
+    "returns_correlated": true
+  },
+  "social_security": {
+    "PIA": 2000.0,
+    "claim_age": 67
+  },
+  "roth_conversion": {
+    "annual_cap": 0.0,
+    "start_age": 55,
+    "end_age": 55,
+    "tax_rate": 0.22,
+    "pay_tax_from_taxable": true
+  },
+  "state": "MI",
+  "filing_status": "single"
+}
