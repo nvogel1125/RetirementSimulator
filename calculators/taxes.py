@@ -84,13 +84,18 @@ def compute_federal_tax(
 
     taxable_income = max(0.0, income - std_ded)
     tax = 0.0
+    remaining = taxable_income
     for bracket in brackets:
         rate = bracket["rate"]
         start = bracket["start"]
         end = bracket["end"] if bracket["end"] is not None else float("inf")
+        width = end - start
+        if remaining <= 0:
+            break
         if taxable_income > start:
-            amount = min(taxable_income, end) - start
+            amount = min(remaining, width)
             tax += amount * rate
+            remaining -= amount
         else:
             break
     return tax
@@ -132,9 +137,13 @@ def compute_capital_gains_tax(
         rate = bracket["rate"]
         start = bracket["start"]
         end = bracket["end"] if bracket["end"] is not None else float("inf")
+        width = end - start
+        if remaining <= 0:
+            break
         if gain > start:
-            amount = min(gain, end) - start
+            amount = min(remaining, width)
             tax += amount * rate
+            remaining -= amount
         else:
             break
     return tax
