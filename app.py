@@ -356,7 +356,12 @@ if "results" not in locals():
 st.subheader("Plan Summary")
 kcol1, kcol2 = st.columns(2)
 with kcol1:
-    st.plotly_chart(success_gauge(results["success_prob"]), use_container_width=True)
+    # monte_carlo.simulate returns "success_probability"; older key "success_prob"
+    # triggered a KeyError when accessing the results. Use the correct key.
+    st.plotly_chart(
+        success_gauge(results["success_probability"]),
+        use_container_width=True,
+    )
 
 with kcol2:
     st.metric(label="Median terminal net worth", value=f"${results['median_terminal']:,.0f}")
