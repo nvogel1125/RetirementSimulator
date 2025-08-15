@@ -128,7 +128,7 @@ st.session_state.setdefault("plan", {})
 st.session_state.setdefault("form_defaults", {})
 st.session_state.setdefault("scenarios", {})            # name -> plan dict
 st.session_state.setdefault("export_json", None)
-st.session_state.setdefault("special_editor_rows", [])  # main-page specials table
+st.session_state.setdefault("special_editor_rows", [])  # special expenses table
 st.session_state.setdefault("auto_run", False)
 st.session_state.setdefault("run_now", False)
 st.session_state.setdefault("username", None)           # ensure key exists
@@ -262,9 +262,9 @@ def load_user_scenarios(username: str) -> list:
 st.sidebar.header("Retirement Plan Inputs")
 plan = plan_form()
 
-# --- Special expenses editor (main page, not sidebar) ---
-st.subheader("Special Expenses Editor")
-with st.form("special_expenses_form"):
+# --- Sidebar: special expenses editor ---
+st.sidebar.subheader("Special Expenses")
+with st.sidebar.form("special_expenses_form"):
     # editable table
     specials_df = pd.DataFrame(st.session_state["special_editor_rows"], columns=["Age", "Amount"])
     edited_df = st.data_editor(
@@ -287,16 +287,7 @@ with st.form("special_expenses_form"):
             if pd.notna(row["Age"]) and pd.notna(row["Amount"])
         ]
 
-# --- Sidebar: run button and scenario controls ---
 st.sidebar.divider()
-st.sidebar.header("Run Simulation")
-left, right = st.sidebar.columns(2)
-with left:
-    st.session_state["auto_run"] = st.checkbox("Auto run", value=st.session_state["auto_run"])
-with right:
-    if st.button("Run", type="primary"):
-        st.session_state["run_now"] = True
-
 st.sidebar.header("Save/Load Scenarios")
 scenario_name = st.sidebar.text_input("Scenario name")
 c1, c2 = st.sidebar.columns(2)
@@ -320,6 +311,15 @@ with c2:
                 st.session_state["special_editor_rows"] = s["plan"].get("expenses", {}).get("special", [])
                 st.sidebar.success(f"Loaded '{load_name}'")
                 st.rerun()
+
+# --- Main page: run button ---
+st.header("Run Simulation")
+left, right = st.columns(2)
+with left:
+    st.session_state["auto_run"] = st.checkbox("Auto run", value=st.session_state["auto_run"])
+with right:
+    if st.button("Run", type="primary"):
+        st.session_state["run_now"] = True
 
 # --- JSON Export ---
 st.sidebar.divider()
