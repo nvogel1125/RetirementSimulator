@@ -110,9 +110,9 @@ def plan_form():
 
     # -------- Income --------
     st.sidebar.header("Income")
-    salary = st.number_input("Salary (pre-retirement)", min_value=0.0,
+    salary = st.sidebar.number_input("Salary (pre-retirement)", min_value=0.0,
                              value=_d("salary",0.0), key=WIDGET_KEYS["salary"])
-    salary_growth_pct = st.number_input(
+    salary_growth_pct = st.sidebar.number_input(
         "Salary annual raise (%)", min_value=0.0, max_value=100.0,
         value=_d("salary_growth", 3.0), key=WIDGET_KEYS["salary_growth"],
         help="Average yearly raise before retirement, as a percent."
@@ -120,35 +120,35 @@ def plan_form():
 
     # -------- Expenses --------
     st.sidebar.header("Expenses")
-    baseline_expenses = st.number_input("Baseline annual expenses", min_value=0.0,
+    baseline_expenses = st.sidebar.number_input("Baseline annual expenses", min_value=0.0,
                                         value=_d("baseline_expenses",0.0),
                                         key=WIDGET_KEYS["baseline_expenses"])
     st.sidebar.caption("Use the **Special Expenses Editor** on the main page to add unlimited one-offs.")
 
     # -------- Social Security --------
     st.sidebar.header("Social Security")
-    ss_pia = st.number_input("PIA (monthly at FRA)", min_value=0.0,
+    ss_pia = st.sidebar.number_input("PIA (monthly at FRA)", min_value=0.0,
                              value=_d("ss_pia",0.0), key=WIDGET_KEYS["ss_pia"])
-    ss_claim_age = st.number_input("Claiming age", min_value=62, max_value=70,
+    ss_claim_age = st.sidebar.number_input("Claiming age", min_value=62, max_value=70,
                                    value=_d("ss_claim_age",67), key=WIDGET_KEYS["ss_claim_age"])
 
     # -------- Roth Conversion --------
     st.sidebar.header("Roth Conversion")
-    rc_cap = st.number_input(
+    rc_cap = st.sidebar.number_input(
         "Annual conversion cap (0–1)", min_value=0.0, max_value=1.0, step=0.01,
         value=_d("rc_cap",0.0), key=WIDGET_KEYS["rc_cap"],
         help="Fraction of prior-year pre-tax balance to convert each year while in the window."
     )
-    rc_start_age = st.number_input("Start age", min_value=18, max_value=120,
+    rc_start_age = st.sidebar.number_input("Start age", min_value=18, max_value=120,
                                    value=_d("rc_start_age",55), key=WIDGET_KEYS["rc_start_age"])
-    rc_end_age   = st.number_input("End age", min_value=18, max_value=120,
+    rc_end_age   = st.sidebar.number_input("End age", min_value=18, max_value=120,
                                    value=_d("rc_end_age",70), key=WIDGET_KEYS["rc_end_age"])
-    rc_tax_rate = st.number_input(
+    rc_tax_rate = st.sidebar.number_input(
         "Target tax rate for conversions (0–1)", min_value=0.0, max_value=1.0, step=0.01,
         value=_d("rc_tax_rate",0.22), key=WIDGET_KEYS["rc_tax_rate"],
         help="Applied to the converted amount as ordinary income for that year."
     )
-    rc_pay_from_taxable = st.checkbox(
+    rc_pay_from_taxable = st.sidebar.checkbox(
         "Pay conversion taxes from taxable?", value=_d("rc_pay_from_taxable", True),
         key=WIDGET_KEYS["rc_pay_from_taxable"],
         help="If off, tax is withheld from the conversion (less goes into Roth)."
@@ -156,7 +156,7 @@ def plan_form():
 
     # -------- Assumptions / Sim --------
     st.sidebar.header("Assumptions")
-    returns_correlated = st.checkbox(
+    returns_correlated = st.sidebar.checkbox(
         "Correlate all accounts 100% (sequence risk)",
         value=_d("returns_correlated", True), key=WIDGET_KEYS["returns_correlated"]
     )
