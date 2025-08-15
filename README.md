@@ -1,6 +1,6 @@
-# Retirement Planning Dashboard
+# NVision Retirement Simulator
 
-This repository contains a free, open–source retirement planning dashboard inspired by the capabilities of **Boldin** (formerly NewRetirement).  The goal of this project is to allow individuals to build and evaluate personalised retirement plans without a subscription or proprietary data.  You can run the app locally with one command (`streamlit run app.py`), load and save scenarios, explore Roth conversion strategies and Monte Carlo probability of success, and export reports.
+This repository contains the **NVision Retirement Simulator**, a free, open–source retirement planning dashboard inspired by the capabilities of **Boldin** (formerly NewRetirement).  The goal of this project is to allow individuals to build and evaluate personalised retirement plans without a subscription or proprietary data.  You can run the app locally with one command (`streamlit run app.py`), load and save scenarios, explore Roth conversion strategies and Monte Carlo probability of success, and export reports.
 
 ## Features
 

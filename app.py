@@ -1,10 +1,8 @@
 # app.py
 import json
 from copy import deepcopy
-from io import BytesIO
 import time
 from pathlib import Path
-import base64
 
 import pandas as pd
 import streamlit as st
@@ -16,7 +14,7 @@ from retirement_planner.components.charts import fan_chart, account_area_chart, 
 
 # ---------- Page config ----------
 st.set_page_config(
-    page_title="Retirement Planner",
+    page_title="NVision Retirement Simulator",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -156,21 +154,18 @@ def _check_login(u: str, p: str) -> bool:
     return bool(u) and users.get(u) == p
 
 
-def _logo_bytes(name: str):
-    """Return a BytesIO stream for a Base64-encoded logo text file."""
-    path = BASE_DIR / "assets" / f"{name}.txt"
-    if path.exists():
-        b64 = path.read_text()
-        return BytesIO(base64.b64decode(b64))
-    return None
+def _logo_path(name: str):
+    """Return a Path to a logo image if it exists."""
+    path = BASE_DIR / "assets" / f"{name}.png"
+    return path if path.exists() else None
 
 
 # ====== LOGIN GATE ======
 if st.session_state["username"] is None:
-    logo = _logo_bytes("logo_light")
+    logo = _logo_path("light_logo")
     if logo:
-        st.image(logo, width=200)
-    st.title("NV Retirement Simulator")
+        st.image(str(logo), width=200)
+    st.title("NVision Retirement Simulator")
 
     st.subheader("Sign In")
     u = st.text_input("Username", key="login_user")
@@ -214,15 +209,15 @@ def header_bar():
     with st.container():
         c1, c2 = st.columns([1, 6])
         with c1:
-            logo = _logo_bytes("logo_dark")
+            logo = _logo_path("dark_logo")
             if logo:
-                st.image(logo, width=140)
+                st.image(str(logo), width=140)
             else:
-                st.markdown("### 🟩 PlanLab")  # fallback text logo with MSU green emoji
+                st.markdown("### NVision")  # fallback text logo
         with c2:
             st.markdown(
                 """
-                ### **Retirement Planning Dashboard**
+                ### **NVision Retirement Simulator**
                 _Model scenarios, Monte Carlo success, taxes/RMDs, and Roth conversions._
                 """
             )
@@ -264,28 +259,38 @@ plan = plan_form()
 
 # --- Sidebar: special expenses editor ---
 st.sidebar.subheader("Special Expenses")
-with st.sidebar.form("special_expenses_form"):
-    # editable table
-    specials_df = pd.DataFrame(st.session_state["special_editor_rows"], columns=["Age", "Amount"])
-    edited_df = st.data_editor(
-        specials_df,
-        num_rows="dynamic",
-        column_config={
-            "Age": st.column_config.NumberColumn(
-                min_value=plan["current_age"], max_value=plan["end_age"], step=1
-            ),
-            "Amount": st.column_config.NumberColumn(min_value=0.0, format="$%.2f")
-        },
-        hide_index=True,
-        key="special_expenses_editor"
+specials = st.session_state["special_editor_rows"]
+remove_idx = []
+if specials:
+    st.sidebar.markdown("**Age** | **Amount**")
+for i, row in enumerate(specials):
+    c1, c2, c3 = st.sidebar.columns([1, 1, 0.3], gap="small")
+    age = c1.number_input(
+        "Age",
+        value=row.get("age", plan["current_age"]),
+        min_value=plan["current_age"],
+        max_value=plan["end_age"],
+        step=1,
+        key=f"sp_age_{i}",
+        label_visibility="collapsed",
     )
-    if st.form_submit_button("💾 Save Special Expenses"):
-        st.session_state["special_editor_rows"] = edited_df.to_dict("records")
-        plan["expenses"]["special"] = [
-            {"age": int(row["Age"]), "amount": float(row["Amount"])}
-            for row in st.session_state["special_editor_rows"]
-            if pd.notna(row["Age"]) and pd.notna(row["Amount"])
-        ]
+    amt = c2.number_input(
+        "Amount",
+        value=row.get("amount", 0.0),
+        min_value=0.0,
+        step=100.0,
+        format="%.2f",
+        key=f"sp_amt_{i}",
+        label_visibility="collapsed",
+    )
+    if c3.button("✖", key=f"sp_del_{i}"):
+        remove_idx.append(i)
+    specials[i] = {"age": int(age), "amount": float(amt)}
+for idx in reversed(remove_idx):
+    specials.pop(idx)
+if st.sidebar.button("➕ Add Expense"):
+    specials.append({"age": plan["current_age"], "amount": 0.0})
+plan["expenses"]["special"] = specials
 
 st.sidebar.divider()
 st.sidebar.header("Save/Load Scenarios")
