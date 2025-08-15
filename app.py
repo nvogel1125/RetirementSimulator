@@ -20,6 +20,16 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Hide Streamlit's default menu and footer
+HIDE_STREAMLIT_STYLE = """
+    <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+    </style>
+"""
+st.markdown(HIDE_STREAMLIT_STYLE, unsafe_allow_html=True)
+
 # ---------- Enhanced UI polish with MSU theme ----------
 st.markdown(
     """
