@@ -4,6 +4,7 @@ from copy import deepcopy
 from io import BytesIO
 import time
 from pathlib import Path
+import base64
 
 import pandas as pd
 import streamlit as st
@@ -145,26 +146,59 @@ def _read_users():
     except FileNotFoundError:
         return {}
 
+def _write_users(users: dict):
+    USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(USERS_PATH, "w", encoding="utf-8") as f:
+        json.dump(users, f, indent=2)
+
 def _check_login(u: str, p: str) -> bool:
     users = _read_users()
     return bool(u) and users.get(u) == p
 
 
+def _logo_bytes(name: str):
+    """Return a BytesIO stream for a Base64-encoded logo text file."""
+    path = BASE_DIR / "assets" / f"{name}.txt"
+    if path.exists():
+        b64 = path.read_text()
+        return BytesIO(base64.b64decode(b64))
+    return None
+
+
 # ====== LOGIN GATE ======
 if st.session_state["username"] is None:
-    st.title("🔐 Sign in")
+    logo = _logo_bytes("logo_light")
+    if logo:
+        st.image(logo, width=200)
+    st.title("NV Retirement Simulator")
+
+    st.subheader("Sign In")
     u = st.text_input("Username", key="login_user")
     p = st.text_input("Password", type="password", key="login_pass")
-    left, _ = st.columns([1, 4])
-    with left:
-        if st.button("Log in"):
-            if _check_login(u, p):
-                st.session_state["username"] = u
-                st.success(f"Welcome, {u}!")
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
-    st.caption("Lightweight login using a local file (not for sensitive data).")
+    if st.button("Sign In"):
+        if _check_login(u, p):
+            st.session_state["username"] = u
+            st.success(f"Welcome, {u}!")
+            st.rerun()
+        else:
+            st.error("Invalid username or password.")
+
+    st.divider()
+    st.subheader("Create Account")
+    new_u = st.text_input("New Username", key="new_user")
+    new_p = st.text_input("New Password", type="password", key="new_pass")
+    if st.button("Create Account"):
+        users = _read_users()
+        if new_u in users:
+            st.error("Username already exists.")
+        elif not new_u or not new_p:
+            st.error("Both fields are required.")
+        else:
+            users[new_u] = new_p
+            _write_users(users)
+            st.success("Account created. Please sign in.")
+
+    st.caption("Credentials are stored locally in users.json (not for sensitive data).")
     st.stop()
 
 # Show who is logged in + a logout
@@ -177,18 +211,18 @@ with st.sidebar:
 
 # ---------- Header bar ----------
 def header_bar():
-    logo_path = BASE_DIR / "assets" / "logo.png"
     with st.container():
         c1, c2 = st.columns([1, 6])
         with c1:
-            if logo_path.exists():
-                st.image(str(logo_path), width=140)
+            logo = _logo_bytes("logo_dark")
+            if logo:
+                st.image(logo, width=140)
             else:
                 st.markdown("### 🟩 PlanLab")  # fallback text logo with MSU green emoji
         with c2:
             st.markdown(
                 """
-                ### **Retirement Planning Dashboard**  
+                ### **Retirement Planning Dashboard**
                 _Model scenarios, Monte Carlo success, taxes/RMDs, and Roth conversions._
                 """
             )
