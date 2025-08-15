@@ -2,6 +2,9 @@ from __future__ import annotations
 from typing import Dict, List
 import numpy as np
 
+# RMD rules are in a sibling module
+from . import rmd
+
 def _draw_return(mean: float, stdev: float, rng: np.random.Generator) -> float:
     return rng.normal(loc=mean, scale=stdev)
 
@@ -97,6 +100,14 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
 
     correlate = bool(plan.get("assumptions", {}).get("returns_correlated", True))
     rc = plan.get("roth_conversion", {}) or {}
+
+    # Withdrawal strategy controls how retirement expenses are funded
+    strategy = plan.get("withdrawal_strategy", "standard")
+    bracket = plan.get("withdrawal_bracket", {}) or {}
+
+    # Determine the age RMDs must begin
+    birth_year = int(plan.get("birth_year", 1900))
+    rmd_start = rmd.rmd_start_age(birth_year)
 
     ages = list(range(curr, end + 1))
     net_worth: List[float] = []
@@ -227,35 +238,83 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         if age >= retire_age:
             need = max(0.0, year_expenses)
 
-            # taxable first
-            take = min(taxable.get("balance", 0.0), need)
-            taxable["balance"] -= take
-            need -= take
-            year_withdrawals += take
+            rate = pre_tax_tax_rate
+            rmd_gross = 0.0
+            if age >= rmd_start and pre_tax.get("balance", 0.0) > 0.0:
+                rmd_gross = rmd.compute_rmd(prior_pre_tax_balance, age)
+                rmd_gross = min(rmd_gross, pre_tax.get("balance", 0.0))
+                net_rmd = rmd_gross * (1 - rate)
+                pre_tax["balance"] -= rmd_gross
+                year_withdrawals += rmd_gross
+                withdraw_tax += rmd_gross * rate
+                if net_rmd >= need:
+                    cash["balance"] = cash.get("balance", 0.0) + (net_rmd - need)
+                    need = 0.0
+                else:
+                    need -= net_rmd
 
-            # pre-tax with tax hit
             if need > 0:
-                rate = pre_tax_tax_rate
-                gross = min(pre_tax.get("balance", 0.0), need / (1 - rate) if rate < 1 else need)
-                net = gross * (1 - rate)
-                pre_tax["balance"] -= gross
-                need -= net
-                year_withdrawals += gross
-                withdraw_tax += gross * rate
+                if strategy == "proportional":
+                    tax_bal = taxable.get("balance", 0.0)
+                    pre_bal = pre_tax.get("balance", 0.0)
+                    total_net = tax_bal + pre_bal * (1 - rate)
+                    if total_net > 0:
+                        desired_taxable = need * (tax_bal / total_net)
+                        net_from_taxable = min(tax_bal, desired_taxable)
+                        taxable["balance"] -= net_from_taxable
+                        year_withdrawals += net_from_taxable
+                        need -= net_from_taxable
 
-            # roth next
-            if need > 0:
-                take = min(roth.get("balance", 0.0), need)
-                roth["balance"] -= take
-                need -= take
-                year_withdrawals += take
+                        net_from_pre = min(pre_bal * (1 - rate), need)
+                        gross_pre = net_from_pre / (1 - rate) if rate < 1 else net_from_pre
+                        pre_tax["balance"] -= gross_pre
+                        year_withdrawals += gross_pre
+                        withdraw_tax += gross_pre * rate
+                        need -= net_from_pre
 
-            # cash last
-            if need > 0:
-                take = min(cash.get("balance", 0.0), need)
-                cash["balance"] -= take
-                need -= take
-                year_withdrawals += take
+                elif strategy == "tax_bracket":
+                    limit = float(bracket.get("pre_tax_limit", 0.0))
+                    limit = max(0.0, limit - rmd_gross)
+                    if limit > 0 and need > 0:
+                        gross = min(pre_tax.get("balance", 0.0), limit, need / (1 - rate) if rate < 1 else need)
+                        net = gross * (1 - rate)
+                        pre_tax["balance"] -= gross
+                        need -= net
+                        year_withdrawals += gross
+                        withdraw_tax += gross * rate
+
+                    if need > 0:
+                        take = min(taxable.get("balance", 0.0), need)
+                        taxable["balance"] -= take
+                        need -= take
+                        year_withdrawals += take
+
+                else:  # standard taxable-first rule
+                    take = min(taxable.get("balance", 0.0), need)
+                    taxable["balance"] -= take
+                    need -= take
+                    year_withdrawals += take
+
+                    if need > 0:
+                        gross = min(pre_tax.get("balance", 0.0), need / (1 - rate) if rate < 1 else need)
+                        net = gross * (1 - rate)
+                        pre_tax["balance"] -= gross
+                        need -= net
+                        year_withdrawals += gross
+                        withdraw_tax += gross * rate
+
+                # roth is tapped after the chosen strategy above
+                if need > 0:
+                    take = min(roth.get("balance", 0.0), need)
+                    roth["balance"] -= take
+                    need -= take
+                    year_withdrawals += take
+
+                if need > 0:
+                    take = min(cash.get("balance", 0.0), need)
+                    cash["balance"] -= take
+                    need -= take
+                    year_withdrawals += take
 
         # --- bookkeeping ---
         total_nw = sum([

@@ -16,6 +16,7 @@ from retirement_planner.components.charts import (
     cash_flow_chart,
     tax_chart,
 )
+from retirement_planner.components.insights import generate_insights
 
 
 # ---------- Page config ----------
@@ -464,6 +465,11 @@ else:
             margin=dict(l=10, r=10, t=40, b=10),
         )
         st.plotly_chart(fig_conv, use_container_width=True)
+
+# --- AI insights ---
+st.divider()
+st.subheader("AI Insights")
+st.info(generate_insights(results))
 
 # --- Median ledger ---
 st.markdown("### Ledger (Median Path)")
