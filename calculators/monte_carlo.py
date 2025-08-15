@@ -50,11 +50,13 @@ def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
 
     return {
         "ages": ages,
-        "success_prob": success_prob,
+        "success_probability": success_prob,
+        "percentiles": {
+            "p10": p10.tolist(),
+            "p50": p50.tolist(),
+            "p90": p90.tolist(),
+        },
         "median_terminal": float(np.median(terminal)),
-        "networth_p10": p10.tolist(),
-        "networth_p50": p50.tolist(),
-        "networth_p90": p90.tolist(),
         "acct_series_median": acct_series_median,
         "ledger_median": ledger_median,
     }
