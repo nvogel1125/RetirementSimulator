@@ -8,9 +8,9 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from calculators import monte_carlo
-from components.forms import plan_form, WIDGET_KEYS  # keys for sidebar widgets
-from components.charts import fan_chart, account_area_chart, success_gauge
+from retirement_planner.calculators import monte_carlo
+from retirement_planner.components.forms import plan_form, WIDGET_KEYS  # keys for sidebar widgets
+from retirement_planner.components.charts import fan_chart, account_area_chart, success_gauge
 
 
 # ---------- Page config ----------
