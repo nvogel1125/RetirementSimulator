@@ -72,6 +72,15 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
     taxable = acc.get("taxable", {}).copy()
     cash = acc.get("cash", {}).copy()
 
+    # Pre- and post-tax withdrawal tax rate (used when tapping 401k/IRA)
+    pre_tax_tax_rate = float(pre_tax.get("withdrawal_tax_rate", 0.0))
+
+    # Roth IRA contribution behaviour
+    roth_income_limit = float(plan.get("income", {}).get("roth_income_limit", float("inf")))
+    roth_limit = float(roth.get("annual_limit", roth.get("contribution", 0.0)))
+    roth_limit_growth = float(roth.get("limit_growth", 0.0))
+    roth_max_out = bool(roth.get("max_out", False))
+
     # Income & salary growth
     salary = float(plan.get("income", {}).get("salary", 0.0))
     salary_growth = float(plan.get("income", {}).get("salary_growth", 0.0))
@@ -114,12 +123,74 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         extra = special_by_age.get(age, 0.0)
         year_expenses = baseline + extra
 
-        # --- contributions before retirement ---
-        if age < retire_age:
-            pre_tax["balance"] = pre_tax.get("balance", 0.0) + pre_tax.get("contribution", 0.0)
-            roth["balance"]    = roth.get("balance", 0.0)    + roth.get("contribution", 0.0)
-            taxable["balance"] = taxable.get("balance", 0.0) + taxable.get("contribution", 0.0)
+        # --- handle contributions / deficits before retirement ---
+        year_withdrawals = 0.0
+        withdraw_tax = 0.0
+        available = year_income - year_expenses
 
+        if age < retire_age and available > 0:
+            # 401k/pre-tax contributions first
+            want = float(pre_tax.get("contribution", 0.0))
+            contrib = min(available, want)
+            pre_tax["balance"] = pre_tax.get("balance", 0.0) + contrib
+            available -= contrib
+
+            # Roth IRA (respect income limit)
+            roth_contrib_cap = float(roth.get("contribution", 0.0))
+            if roth_max_out:
+                roth_contrib_cap = roth_limit
+            if year_income <= roth_income_limit:
+                contrib = min(available, roth_contrib_cap)
+                roth["balance"] = roth.get("balance", 0.0) + contrib
+                available -= contrib
+
+            # Taxable/brokerage
+            want = float(taxable.get("contribution", 0.0))
+            contrib = min(available, want)
+            taxable["balance"] = taxable.get("balance", 0.0) + contrib
+            available -= contrib
+
+            # Whatever remains sits in cash
+            if available > 0:
+                cash["balance"] = cash.get("balance", 0.0) + available
+                available = 0.0
+
+        # If expenses exceed income, draw from accounts
+        if available < 0:
+            need = -available
+            # cash first
+            take = min(cash.get("balance", 0.0), need)
+            cash["balance"] -= take
+            need -= take
+            year_withdrawals += take
+
+            # taxable next
+            if need > 0:
+                take = min(taxable.get("balance", 0.0), need)
+                taxable["balance"] -= take
+                need -= take
+                year_withdrawals += take
+
+            # pre-tax with tax impact
+            if need > 0:
+                rate = pre_tax_tax_rate
+                gross = min(pre_tax.get("balance", 0.0), need / (1 - rate) if rate < 1 else need)
+                net = gross * (1 - rate)
+                pre_tax["balance"] -= gross
+                need -= net
+                year_withdrawals += gross
+                withdraw_tax += gross * rate
+
+            # roth last resort
+            if need > 0:
+                take = min(roth.get("balance", 0.0), need)
+                roth["balance"] -= take
+                need -= take
+                year_withdrawals += take
+
+        # update Roth limit for "max out" option
+        if roth_max_out:
+            roth_limit *= (1.0 + roth_limit_growth)
         # --- returns (correlated or independent) ---
         if correlate:
             rdraw = _draw_return(roth.get("mean_return", 0.06), roth.get("stdev_return", 0.12), rng)
@@ -153,18 +224,38 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
                 # taxable unchanged in this branch
 
         # --- withdrawals to cover retirement expenses ---
-        year_withdrawals = 0.0
         if age >= retire_age:
             need = max(0.0, year_expenses)
-            for acct in (taxable, pre_tax, roth, cash):
-                available = acct.get("balance", 0.0)
-                take = min(available, need)
-                if take > 0:
-                    acct["balance"] = available - take
-                    need -= take
-                    year_withdrawals += take
-                if need <= 0:
-                    break
+
+            # taxable first
+            take = min(taxable.get("balance", 0.0), need)
+            taxable["balance"] -= take
+            need -= take
+            year_withdrawals += take
+
+            # pre-tax with tax hit
+            if need > 0:
+                rate = pre_tax_tax_rate
+                gross = min(pre_tax.get("balance", 0.0), need / (1 - rate) if rate < 1 else need)
+                net = gross * (1 - rate)
+                pre_tax["balance"] -= gross
+                need -= net
+                year_withdrawals += gross
+                withdraw_tax += gross * rate
+
+            # roth next
+            if need > 0:
+                take = min(roth.get("balance", 0.0), need)
+                roth["balance"] -= take
+                need -= take
+                year_withdrawals += take
+
+            # cash last
+            if need > 0:
+                take = min(cash.get("balance", 0.0), need)
+                cash["balance"] -= take
+                need -= take
+                year_withdrawals += take
 
         # --- bookkeeping ---
         total_nw = sum([
@@ -182,7 +273,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         ledger["income"].append(year_income)
         ledger["expenses"].append(year_expenses)
         ledger["withdrawals"].append(year_withdrawals)
-        ledger["taxes"].append(conv_tax)                 # simplified: only conversion tax modeled
+        ledger["taxes"].append(conv_tax + withdraw_tax)
         ledger["roth_conversion"].append(gross_conv)     # visibility
         ledger["conversion_tax"].append(conv_tax)
         ledger["pre_tax"].append(pre_tax.get("balance", 0.0))

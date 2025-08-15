@@ -16,6 +16,11 @@ def fan_chart(ages: Sequence[int],
               p90: Sequence[float],
               title: str = "Net Worth (Percentile Fan)") -> go.Figure:
     """Shaded 10–90 band with a median line."""
+    n = len(ages)
+    p10 = _fit(p10, n)
+    p50 = _fit(p50, n)
+    p90 = _fit(p90, n)
+
     fig = go.Figure()
 
     # Shaded band 10–90
