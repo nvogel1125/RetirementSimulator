@@ -40,6 +40,7 @@ WIDGET_KEYS = {
 
     "returns_correlated": "in_returns_correlated",
     "n_paths": "in_n_paths",
+    "withdrawal_strategy": "in_withdrawal_strategy",
 }
 
 def _d(key, fallback):
@@ -154,6 +155,23 @@ def plan_form():
         help="If off, tax is withheld from the conversion (less goes into Roth)."
     )
 
+    # -------- Withdrawal Strategy --------
+    st.sidebar.header("Withdrawal Strategy")
+    strategy_options = ["standard", "proportional", "tax_bracket"]
+    strategy_labels = {
+        "standard": "Taxable → Traditional → Roth",
+        "proportional": "Proportional taxable/traditional",
+        "tax_bracket": "Fill bracket with traditional",
+    }
+    strategy_default = _d("withdrawal_strategy", "standard")
+    strategy = st.sidebar.selectbox(
+        "Strategy",
+        strategy_options,
+        index=strategy_options.index(strategy_default) if strategy_default in strategy_options else 0,
+        format_func=lambda s: strategy_labels.get(s, s),
+        key=WIDGET_KEYS["withdrawal_strategy"],
+    )
+
     # -------- Assumptions / Sim --------
     st.sidebar.header("Assumptions")
     returns_correlated = st.sidebar.checkbox(
@@ -198,6 +216,7 @@ def plan_form():
             "tax_rate": float(rc_tax_rate),
             "pay_tax_from_taxable": bool(rc_pay_from_taxable),
         },
+        "withdrawal_strategy": strategy,
         "_sim": {"n_paths": int(n_paths)}
     }
     return plan
