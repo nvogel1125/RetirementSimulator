@@ -2,7 +2,7 @@
 import json
 from copy import deepcopy
 from io import BytesIO
-import os, time
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -134,7 +134,9 @@ st.session_state.setdefault("username", None)           # ensure key exists
 
 
 # ====== SIMPLE LOGIN (plaintext users file) ======
-USERS_PATH = os.path.join("data", "users.json")
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "retirement_planner" / "data"
+USERS_PATH = DATA_DIR / "users.json"
 
 def _read_users():
     try:
@@ -175,7 +177,7 @@ with st.sidebar:
 
 # ---------- Header bar ----------
 def header_bar():
-    logo_path = Path("assets/logo.png")
+    logo_path = BASE_DIR / "assets" / "logo.png"
     with st.container():
         c1, c2 = st.columns([1, 6])
         with c1:
@@ -195,18 +197,18 @@ header_bar()
 
 
 # ====== SIMPLE PER-USER STORAGE (JSON files) ======
-def _user_dir(username: str) -> str:
-    d = os.path.join("data", "users", username)
-    os.makedirs(d, exist_ok=True)
+def _user_dir(username: str) -> Path:
+    d = DATA_DIR / "users" / username
+    d.mkdir(parents=True, exist_ok=True)
     return d
 
-def _scenarios_path(username: str) -> str:
-    return os.path.join(_user_dir(username), "scenarios.json")
+def _scenarios_path(username: str) -> Path:
+    return _user_dir(username) / "scenarios.json"
 
 def save_user_scenario(username: str, scenario_name: str, plan: dict):
     path = _scenarios_path(username)
     existing = []
-    if os.path.exists(path):
+    if path.exists():
         with open(path, "r", encoding="utf-8") as f:
             existing = json.load(f)  # list of {name, plan, ts}
     # put newest first
@@ -216,7 +218,7 @@ def save_user_scenario(username: str, scenario_name: str, plan: dict):
 
 def load_user_scenarios(username: str) -> list:
     path = _scenarios_path(username)
-    if not os.path.exists(path):
+    if not path.exists():
         return []
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
