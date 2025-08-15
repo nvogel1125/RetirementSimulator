@@ -21,26 +21,102 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ---------- Light UI polish ----------
+# ---------- Enhanced UI polish with MSU theme ----------
 st.markdown(
     """
 <style>
-/* Layout spacing */
-.block-container { padding-top: 1.0rem; }
+/* Global layout */
+.block-container { 
+    padding: 1.5rem 2rem; 
+    max-width: 1400px; 
+    margin: auto; 
+}
 
-/* Cards */
-div[data-testid="stMetric"] { background:#f8fafc; border-radius:16px; padding:12px; border:1px solid #e5e7eb; }
-div.stPlotlyChart { background:#ffffff; border-radius:14px; padding:8px; border:1px solid #eef2f7; }
+/* Sidebar styling */
+section[data-testid="stSidebar"] { 
+    background-color: #E6ECE9; /* MSU-inspired light gray-green */
+    padding: 1.5rem; 
+    border-right: 1px solid #D1D9D6; 
+}
+section[data-testid="stSidebar"] h2, 
+section[data-testid="stSidebar"] h3 { 
+    color: #18453B; /* MSU green */
+    font-weight: 600; 
+    margin: 0.5rem 0; 
+}
+
+/* Cards for metrics and charts */
+div[data-testid="stMetric"] { 
+    background: #FFFFFF; 
+    border-radius: 12px; 
+    padding: 1rem; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+    border: 1px solid #E6ECE9; 
+    transition: transform 0.2s ease, box-shadow 0.2s ease; 
+}
+div[data-testid="stMetric"]:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+}
+div.stPlotlyChart { 
+    background: #FFFFFF; 
+    border-radius: 12px; 
+    padding: 0.75rem; 
+    border: 1px solid #E6ECE9; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+}
 
 /* Buttons */
-button[kind="primary"] { border-radius:9999px; padding:0.5rem 1rem; }
-.stButton>button { border-radius:10px; }
+button[kind="primary"] { 
+    background-color: #18453B; /* MSU green */
+    color: #FFFFFF; 
+    border-radius: 8px; 
+    padding: 0.5rem 1.25rem; 
+    font-weight: 500; 
+    border: none; 
+    transition: background-color 0.2s ease; 
+}
+button[kind="primary"]:hover { 
+    background-color: #2E6B5E; /* Lighter MSU green on hover */
+}
+.stButton>button { 
+    border-radius: 8px; 
+    border: 1px solid #D1D9D6; 
+    color: #1A2521; 
+    background-color: #FFFFFF; 
+    transition: background-color 0.2s ease, color 0.2s ease; 
+}
+.stButton>button:hover { 
+    background-color: #E6ECE9; 
+    color: #18453B; 
+}
 
-/* Sidebar headings */
-section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 { margin-top:0.6rem; }
+/* Typography */
+h1, h2, h3, h4 { 
+    color: #1A2521; 
+    font-weight: 600; 
+}
+.stCaption { 
+    color: #4B5E58; /* Softer gray for captions */
+}
 
 /* Dividers */
-hr { border-top: 1px solid #e5e7eb; }
+hr { 
+    border-top: 1px solid #D1D9D6; 
+    margin: 1.5rem 0; 
+}
+
+/* Tables */
+div[data-testid="stDataFrame"] { 
+    border-radius: 12px; 
+    overflow: hidden; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+}
+
+/* Smooth transitions for interactivity */
+.stNumberInput, .stTextInput, .stSelectbox, .stSlider { 
+    transition: all 0.2s ease; 
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -106,7 +182,7 @@ def header_bar():
             if logo_path.exists():
                 st.image(str(logo_path), width=140)
             else:
-                st.markdown("### 🟦 PlanLab")  # fallback text logo
+                st.markdown("### 🟩 PlanLab")  # fallback text logo with MSU green emoji
         with c2:
             st.markdown(
                 """
@@ -134,321 +210,113 @@ def save_user_scenario(username: str, scenario_name: str, plan: dict):
         with open(path, "r", encoding="utf-8") as f:
             existing = json.load(f)  # list of {name, plan, ts}
     # put newest first
-    existing.insert(0, {"name": scenario_name, "plan": plan, "ts": int(time.time())})
+    existing.insert(0, {"name": scenario_name, "plan": plan, "ts": time.time()})
     with open(path, "w", encoding="utf-8") as f:
         json.dump(existing, f, indent=2)
 
-def load_user_scenarios(username: str):
+def load_user_scenarios(username: str) -> list:
     path = _scenarios_path(username)
     if not os.path.exists(path):
         return []
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)  # list of {name, plan, ts}
+        return json.load(f)
 
 
-# ---------- Helpers ----------
-def save_json_button(label: str, data: dict, filename: str):
-    buf = BytesIO(json.dumps(data, indent=2).encode("utf-8"))
-    st.download_button(label, data=buf, file_name=filename, mime="application/json")
+# ====== SIDEBAR: FORM + CONTROLS ======
+st.sidebar.header("Retirement Plan Inputs")
+plan = plan_form()
 
-
-def _seed_widget_state_from_defaults(d: dict):
-    """
-    Push defaults into the actual widget keys so Streamlit updates what you see.
-    """
-    # profile
-    st.session_state[WIDGET_KEYS["current_age"]] = d.get("current_age", 55)
-    st.session_state[WIDGET_KEYS["retire_age"]] = d.get("retire_age", 65)
-    st.session_state[WIDGET_KEYS["end_age"]] = d.get("end_age", 90)
-    st.session_state[WIDGET_KEYS["state"]] = d.get("state", "MI")
-    st.session_state[WIDGET_KEYS["filing"]] = d.get("filing_status", "single")
-
-    # accounts
-    st.session_state[WIDGET_KEYS["pre_tax_balance"]] = d.get("pre_tax_balance", 0.0)
-    st.session_state[WIDGET_KEYS["pre_tax_contrib"]] = d.get("pre_tax_contrib", 0.0)
-    st.session_state[WIDGET_KEYS["pre_tax_mean"]] = d.get("pre_tax_mean", 0.05)
-    st.session_state[WIDGET_KEYS["pre_tax_stdev"]] = d.get("pre_tax_stdev", 0.10)
-
-    st.session_state[WIDGET_KEYS["roth_balance"]] = d.get("roth_balance", 0.0)
-    st.session_state[WIDGET_KEYS["roth_contrib"]] = d.get("roth_contrib", 0.0)
-    st.session_state[WIDGET_KEYS["roth_mean"]] = d.get("roth_mean", 0.06)
-    st.session_state[WIDGET_KEYS["roth_stdev"]] = d.get("roth_stdev", 0.12)
-
-    st.session_state[WIDGET_KEYS["taxable_balance"]] = d.get("taxable_balance", 0.0)
-    st.session_state[WIDGET_KEYS["taxable_contrib"]] = d.get("taxable_contrib", 0.0)
-    st.session_state[WIDGET_KEYS["taxable_mean"]] = d.get("taxable_mean", 0.06)
-    st.session_state[WIDGET_KEYS["taxable_stdev"]] = d.get("taxable_stdev", 0.12)
-
-    st.session_state[WIDGET_KEYS["cash_balance"]] = d.get("cash_balance", 0.0)
-
-    # income & expenses
-    st.session_state[WIDGET_KEYS["salary"]] = d.get("salary", 0.0)
-    st.session_state[WIDGET_KEYS["salary_growth"]] = round(d.get("salary_growth", 3.0), 3)  # percent
-    st.session_state[WIDGET_KEYS["baseline_expenses"]] = d.get("baseline_expenses", 0.0)
-
-    # SS
-    st.session_state[WIDGET_KEYS["ss_pia"]] = d.get("ss_pia", 0.0)
-    st.session_state[WIDGET_KEYS["ss_claim_age"]] = d.get("ss_claim_age", 67)
-
-    # Roth conversions
-    st.session_state[WIDGET_KEYS["rc_cap"]] = d.get("rc_cap", 0.0)
-    st.session_state[WIDGET_KEYS["rc_start_age"]] = d.get("rc_start_age", 55)
-    st.session_state[WIDGET_KEYS["rc_end_age"]] = d.get("rc_end_age", 70)
-    st.session_state[WIDGET_KEYS["rc_tax_rate"]] = d.get("rc_tax_rate", 0.22)
-    st.session_state[WIDGET_KEYS["rc_pay_from_taxable"]] = d.get("rc_pay_from_taxable", True)
-
-    # assumptions & sim
-    st.session_state[WIDGET_KEYS["returns_correlated"]] = d.get("returns_correlated", True)
-    st.session_state[WIDGET_KEYS["n_paths"]] = int(d.get("n_paths", 1000))
-
-
-def load_plan_into_state(plan_dict: dict):
-    """Load a JSON plan, seed defaults + widget keys, and rerun UI."""
-    st.session_state["plan"] = plan_dict
-
-    acc = plan_dict.get("accounts", {})
-    income = plan_dict.get("income", {})
-    expenses = plan_dict.get("expenses", {})
-    ss = plan_dict.get("social_security", {})
-    rc = plan_dict.get("roth_conversion", {})
-    asm = plan_dict.get("assumptions", {})
-
-    defaults = {
-        # profile
-        "current_age": plan_dict.get("current_age", 55),
-        "retire_age": plan_dict.get("retire_age", 65),
-        "end_age": plan_dict.get("end_age", 90),
-        "state": plan_dict.get("state", "MI"),
-        "filing_status": plan_dict.get("filing_status", "single"),
-        # accounts
-        "pre_tax_balance": acc.get("pre_tax", {}).get("balance", 0.0),
-        "pre_tax_contrib": acc.get("pre_tax", {}).get("contribution", 0.0),
-        "pre_tax_mean": acc.get("pre_tax", {}).get("mean_return", 0.05),
-        "pre_tax_stdev": acc.get("pre_tax", {}).get("stdev_return", 0.10),
-        "roth_balance": acc.get("roth", {}).get("balance", 0.0),
-        "roth_contrib": acc.get("roth", {}).get("contribution", 0.0),
-        "roth_mean": acc.get("roth", {}).get("mean_return", 0.06),
-        "roth_stdev": acc.get("roth", {}).get("stdev_return", 0.12),
-        "taxable_balance": acc.get("taxable", {}).get("balance", 0.0),
-        "taxable_contrib": acc.get("taxable", {}).get("contribution", 0.0),
-        "taxable_mean": acc.get("taxable", {}).get("mean_return", 0.06),
-        "taxable_stdev": acc.get("taxable", {}).get("stdev_return", 0.12),
-        "cash_balance": acc.get("cash", {}).get("balance", 0.0),
-        # income & expenses
-        "salary": income.get("salary", 0.0),
-        "salary_growth": round(income.get("salary_growth", 0.03) * 100.0, 3),
-        "baseline_expenses": expenses.get("baseline", 0.0),
-        "special_list": expenses.get("special", []),   # for main-page editor
-        # SS
-        "ss_pia": ss.get("PIA", 0.0),
-        "ss_claim_age": ss.get("claim_age", 67),
-        # Roth conversions
-        "rc_cap": rc.get("annual_cap", 0.0),
-        "rc_start_age": rc.get("start_age", 55),
-        "rc_end_age": rc.get("end_age", 70),
-        "rc_tax_rate": rc.get("tax_rate", 0.22),
-        "rc_pay_from_taxable": rc.get("pay_tax_from_taxable", True),
-        # assumptions
-        "returns_correlated": asm.get("returns_correlated", True),
-        # sim settings
-        "n_paths": plan_dict.get("_sim", {}).get("n_paths", 1000),
-    }
-
-    st.session_state["form_defaults"] = defaults
-    st.session_state["special_editor_rows"] = list(defaults.get("special_list", []))
-
-    # CRITICAL: write directly into the widget keys so values update on-screen
-    _seed_widget_state_from_defaults(defaults)
-
-    st.rerun()
-
-
-def add_scenario(name: str, base_plan: dict, mutate_fn=None):
-    """Clone a plan, optionally mutate it, and store as a named scenario."""
-    p = deepcopy(base_plan)
-    if mutate_fn:
-        mutate_fn(p)
-    st.session_state["scenarios"][name] = p
-
-
-def scenario_kpis(name: str, results: dict) -> dict:
-    return {
-        "Scenario": name,
-        "Success %": f"{results['success_prob']*100:.1f}%",
-        "Median Terminal NW": f"${results['median_terminal']:,.0f}",
-    }
-
-
-# ---------- Sidebar: Save / Load ----------
-with st.sidebar:
-    st.markdown("### Save / Load Plan")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("💾 Save current"):
-            st.session_state["export_json"] = json.dumps(st.session_state.get("plan", {}), indent=2)
-    with c2:
-        uploaded = st.file_uploader("Load Plan (JSON)", type=["json"], label_visibility="collapsed")
-    if uploaded:
-        try:
-            plan_dict = json.load(uploaded)
-            load_plan_into_state(plan_dict)
-        except Exception as e:
-            st.error(f"Failed to load plan: {e}")
-
-    if st.session_state.get("export_json"):
-        st.download_button(
-            "⬇️ Download JSON",
-            data=st.session_state["export_json"].encode("utf-8"),
-            file_name="plan.json",
-            mime="application/json",
-        )
-
-# --- Per-user Save / Load (account) ---
-with st.sidebar.expander("💾 My Account (Save/Load)", expanded=False):
-    new_name = st.text_input("Scenario name", value="My Plan", key="acct_scn_name")
-    if st.button("Save current to my account"):
-        save_user_scenario(st.session_state["username"], new_name, st.session_state.get("plan", {}))
-        st.success(f"Saved as '{new_name}'")
-        st.rerun()
-
-    mine = load_user_scenarios(st.session_state["username"])
-    if mine:
-        labels = [f"{i+1}. {row['name']}" for i, row in enumerate(mine)]
-        idx = st.selectbox(
-            "Load one of your saved plans",
-            options=list(range(len(mine))),
-            format_func=lambda i: labels[i],
-        )
-        if st.button("Load selected"):
-            load_plan_into_state(mine[idx]["plan"])
-    else:
-        st.caption("You haven't saved any plans yet.")
-
-
-# ---------- Sidebar: Inputs + Auto-run toggle ----------
-with st.sidebar:
-    st.markdown("---")
-    st.markdown("### Inputs")
-    st.session_state["auto_run"] = st.checkbox(
-        "Auto-run when inputs change", value=False,
-        help="When off, use the Run button on the main page."
-    )
-
-# Build plan from the sidebar form (the form writes to the SIDEBAR)
-plan_from_form = plan_form()
-if plan_from_form:
-    # merge in specials from main-page editor
-    edited_specials = st.session_state.get("special_editor_rows", [])
-    plan_from_form.setdefault("expenses", {})
-    plan_from_form["expenses"]["special"] = edited_specials
-    st.session_state["plan"] = plan_from_form
-
-plan = st.session_state.get("plan", {})
-
-
-# ---------- Main UI ----------
-# Quick guide for the user
-with st.container():
-    st.markdown(
-        """
-    #### What am I editing?
-    - **Profile & Accounts** → in the **left sidebar**.
-    - **Social Security** → set **PIA** and **claim age** (sidebar).
-    - **Roth Conversion Controls** → **annual cap (0–1)**, **start/end ages**, **target tax rate (0–1)** (sidebar).
-    - **Special Expenses** → add one-offs **below** on this page.
-    """
-    )
-
-# Special Expenses Editor (main page)
+# --- Special expenses editor (main page, not sidebar) ---
 st.subheader("Special Expenses Editor")
-st.caption("Add unlimited one-off expenses. These are included in simulations.")
-specials = st.session_state.get("special_editor_rows", [])
-col_add, col_clear = st.columns([1, 1])
-with col_add:
-    if st.button("➕ Add row"):
-        specials.append({"label": "", "age": 30, "amount": 0.0})
-with col_clear:
-    if st.button("🧹 Clear all"):
-        specials = []
-new_rows = []
-for i, row in enumerate(specials):
-    with st.expander(
-        f"Item {i+1}" if row.get("label", "") == "" else f"{i+1} • {row.get('label','')}",
-        expanded=False,
-    ):
-        lbl = st.text_input(f"Label {i+1}", value=row.get("label", ""), key=f"se_lbl_{i}")
-        age = st.number_input(
-            f"Age {i+1}", min_value=18, max_value=120, value=int(row.get("age", 30)), key=f"se_age_{i}"
-        )
-        amt = st.number_input(
-            f"Amount {i+1} ($)", min_value=0.0, value=float(row.get("amount", 0.0)), key=f"se_amt_{i}", step=100.0
-        )
-        new_rows.append({"label": lbl, "age": int(age), "amount": float(amt)})
-st.session_state["special_editor_rows"] = new_rows
+with st.form("special_expenses_form"):
+    # editable table
+    specials_df = pd.DataFrame(st.session_state["special_editor_rows"], columns=["Age", "Amount"])
+    edited_df = st.data_editor(
+        specials_df,
+        num_rows="dynamic",
+        column_config={
+            "Age": st.column_config.NumberColumn(
+                min_value=plan["current_age"], max_value=plan["end_age"], step=1
+            ),
+            "Amount": st.column_config.NumberColumn(min_value=0.0, format="$%.2f")
+        },
+        hide_index=True,
+        key="special_expenses_editor"
+    )
+    if st.form_submit_button("💾 Save Special Expenses"):
+        st.session_state["special_editor_rows"] = edited_df.to_dict("records")
+        plan["expenses"]["special"] = [
+            {"age": int(row["Age"]), "amount": float(row["Amount"])}
+            for row in st.session_state["special_editor_rows"]
+            if pd.notna(row["Age"]) and pd.notna(row["Amount"])
+        ]
 
-st.markdown("---")
+# --- Sidebar: run button and scenario controls ---
+st.sidebar.divider()
+st.sidebar.header("Run Simulation")
+left, right = st.sidebar.columns(2)
+with left:
+    st.session_state["auto_run"] = st.checkbox("Auto run", value=st.session_state["auto_run"])
+with right:
+    if st.button("Run", type="primary"):
+        st.session_state["run_now"] = True
 
-# Quick scenario buttons
-st.subheader("Quick Scenarios")
-c1, c2, c3 = st.columns([1, 1, 6])
+st.sidebar.header("Save/Load Scenarios")
+scenario_name = st.sidebar.text_input("Scenario name")
+c1, c2 = st.sidebar.columns(2)
 with c1:
-    if st.button("Roth ladder → 22% bracket"):
-        def _ladder(p):
-            p.setdefault("roth_conversion", {})
-            p["roth_conversion"]["annual_cap"] = 1.0              # effectively full conversion each year
-            p["roth_conversion"]["tax_rate"] = 0.22
-        add_scenario("Roth ladder to 22%", plan, _ladder)
+    if st.button("Save"):
+        if scenario_name:
+            save_user_scenario(st.session_state["username"], scenario_name, plan)
+            st.session_state["scenarios"][scenario_name] = plan
+            st.sidebar.success(f"Saved '{scenario_name}'")
+        else:
+            st.sidebar.error("Enter a scenario name.")
 with c2:
-    if st.button("Claim Social Security at 70"):
-        def _ss70(p):
-            p.setdefault("social_security", {})
-            p["social_security"]["claim_age"] = 70
-        add_scenario("SS at 70", plan, _ss70)
+    scenarios = load_user_scenarios(st.session_state["username"])
+    options = [s["name"] for s in scenarios]
+    load_name = st.selectbox("Load scenario", [""] + options)
+    if load_name:
+        for s in scenarios:
+            if s["name"] == load_name:
+                st.session_state["form_defaults"] = deepcopy(s["plan"])
+                st.session_state["plan"] = deepcopy(s["plan"])
+                st.session_state["special_editor_rows"] = s["plan"].get("expenses", {}).get("special", [])
+                st.sidebar.success(f"Loaded '{load_name}'")
+                st.rerun()
 
-if st.session_state["scenarios"]:
-    st.success(f"Saved scenarios: {', '.join(st.session_state['scenarios'].keys())}")
+# --- JSON Export ---
+st.sidebar.divider()
+st.sidebar.header("Export")
+if st.sidebar.button("Export JSON"):
+    st.session_state["export_json"] = json.dumps(plan, indent=2)
+if st.session_state.get("export_json"):
+    st.sidebar.download_button(
+        "⬇️ Download JSON",
+        data=st.session_state["export_json"],
+        file_name=f"{scenario_name or 'plan'}.json",
+        mime="application/json"
+    )
+
+# ====== RUN SIMULATION ======
+if st.session_state["run_now"] or st.session_state["auto_run"]:
+    st.session_state["run_now"] = False
+    n_paths = plan.get("_sim", {}).get("n_paths", 1000)
+    with st.spinner(f"Running {n_paths:,} Monte Carlo paths..."):
+        results = monte_carlo.simulate(plan, n_paths=n_paths, seed=42)
 
 
-# Need a plan to run
-if not plan:
-    st.info("Load a plan or fill in the sidebar, then rerun.")
+# ====== DISPLAY: HOME PAGE ======
+if "results" not in locals():
+    st.info("Run a simulation to see results.")
     st.stop()
 
-
-# --- Run control ---
-st.markdown("### Run")
-run_clicked = st.button("▶ Run simulation", type="primary", help="Click to run the Monte Carlo with current inputs.")
-if run_clicked:
-    st.session_state["run_now"] = True
-    st.rerun()
-
-should_run = st.session_state.get("auto_run", False) or st.session_state.get("run_now", False)
-
-if not should_run:
-    st.info("Simulation is paused. Adjust inputs in the sidebar, then click **Run simulation** (or enable **Auto-run**).")
-    st.stop()
-
-# Clear the one-shot flag for next render
-st.session_state["run_now"] = False
-
-
-# --- Simulation ---
-n_paths = plan.get("_sim", {}).get("n_paths", 1000)
-with st.spinner("Running Monte Carlo..."):
-    results = monte_carlo.simulate(plan, n_paths=n_paths, seed=42)
-
-
-# ===================== KPI + Charts (polished) =====================
-st.subheader("Results Overview")
-
-# --- Top KPI ribbon: gauge + quick stats ---
-gcol, kcol1, kcol2 = st.columns([1.2, 1, 1], vertical_alignment="center")
-
-with gcol:
-    st.caption("Success probability (Monte Carlo)")
+st.subheader("Plan Summary")
+kcol1, kcol2 = st.columns(2)
+with kcol1:
     st.plotly_chart(success_gauge(results["success_prob"]), use_container_width=True)
 
-with kcol1:
+with kcol2:
     st.metric(label="Median terminal net worth", value=f"${results['median_terminal']:,.0f}")
     st.caption("Median of ending net worth across all Monte Carlo paths.")
 
@@ -494,7 +362,6 @@ if "ledger_median" in results and any(r.get("roth_conversion", 0) for r in resul
         xaxis_title="Age", yaxis_title="Dollars"
     )
     st.plotly_chart(fig_conv, use_container_width=True)
-# ===================== end KPI + Charts =====================
 
 # --- Roth conversions bar (Median Path) ---
 try:
@@ -538,10 +405,7 @@ except Exception as _e:
     # Don't crash the app if something unexpected happens; surface a gentle note instead.
     st.caption("Roth conversion chart unavailable for this run.")
 
-
-
-# Median ledger
-# Median ledger
+# --- Median ledger ---
 st.markdown("### Ledger (Median Path)")
 lm = results.get("ledger_median", [])
 

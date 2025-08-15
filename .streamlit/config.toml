@@ -1,7 +1,7 @@
 [theme]
 base="light"
-primaryColor="#2563eb"
-backgroundColor="#ffffff"
-secondaryBackgroundColor="#f5f7fb"
-textColor="#0f172a"
+primaryColor="#18453B"         # MSU green
+backgroundColor="#FFFFFF"      # White
+secondaryBackgroundColor="#E6ECE9"  # Light gray-green for contrast
+textColor="#1A2521"           # Dark gray for readability
 font="sans serif"
