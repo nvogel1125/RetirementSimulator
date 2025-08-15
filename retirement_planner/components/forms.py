@@ -156,6 +156,7 @@ def plan_form():
     )
 
     # -------- Withdrawal Strategy --------
+     # -------- Withdrawal Strategy --------
     st.sidebar.header("Withdrawal Strategy")
     strategy_options = ["standard", "proportional", "tax_bracket"]
     strategy_labels = {
@@ -178,6 +179,7 @@ def plan_form():
         help="Choose how retirement withdrawals are sequenced across accounts.",
     )
     st.sidebar.caption(strategy_help.get(strategy, ""))
+
 
     # -------- Assumptions / Sim --------
     st.sidebar.header("Assumptions")
