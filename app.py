@@ -211,7 +211,8 @@ def header_bar():
         with c1:
             logo = _logo_path("dark_logo")
             if logo:
-                st.image(str(logo), width=140)
+                # Scale the logo to the column width so it doesn't overlap text
+                st.image(str(logo), use_column_width=True)
             else:
                 st.markdown("### NVision")  # fallback text logo
         with c2:
