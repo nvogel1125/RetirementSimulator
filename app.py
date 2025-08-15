@@ -22,18 +22,22 @@ st.set_page_config(
 # ---------- Light UI polish ----------
 st.markdown("""
 <style>
-/* padding */
+/* Layout spacing */
 .block-container { padding-top: 1.0rem; }
 
-/* soft cards for metrics and charts */
-div[data-testid="stMetric"] { background:#f8fafc; border-radius:16px; padding:12px; }
-div.stPlotlyChart { background:#ffffff; border-radius:14px; padding:6px; }
+/* Cards */
+div[data-testid="stMetric"] { background:#f8fafc; border-radius:16px; padding:12px; border:1px solid #e5e7eb; }
+div.stPlotlyChart { background:#ffffff; border-radius:14px; padding:8px; border:1px solid #eef2f7; }
 
-/* thin separators */
-hr { border-top: 1px solid #e5e7eb; }
-
-/* primary button a bit pill-y */
+/* Buttons */
 button[kind="primary"] { border-radius:9999px; padding:0.5rem 1rem; }
+.stButton>button { border-radius:10px; }
+
+/* Sidebar headings */
+section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 { margin-top:0.6rem; }
+
+/* Dividers */
+hr { border-top: 1px solid #e5e7eb; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -84,6 +88,27 @@ with st.sidebar:
     if st.button("Logout"):
         st.session_state["username"] = None
         st.rerun()
+
+from pathlib import Path
+
+def header_bar():
+    logo_path = Path("assets/logo.png")
+    with st.container():
+        c1, c2 = st.columns([1, 6])
+        with c1:
+            if logo_path.exists():
+                st.image(str(logo_path), width=140)
+            else:
+                st.markdown("### 🟦 PlanLab")  # fallback text logo
+        with c2:
+            st.markdown(
+                """
+                ### **Retirement Planning Dashboard**
+                _Model scenarios, Monte Carlo success, taxes/RMDs, and Roth conversions._
+                """
+            )
+
+header_bar()
 
 # ====== SIMPLE PER-USER STORAGE (JSON files) ======
 def _user_dir(username: str) -> str:
@@ -301,16 +326,16 @@ if plan_from_form:
 plan = st.session_state.get("plan", {})
 
 # ---------- Main UI ----------
-st.title("📈 Retirement Planning Dashboard")
+
 
 # Quick guide for the user
 with st.container():
     st.markdown("""
-    ### What am I editing?
-    - **Profile & Accounts** → in the **sidebar** (left).
-    - **Social Security** → set **claiming age** and PIA in the sidebar.
-    - **Roth Conversion Controls** → choose **annual cap**, **start/end ages**, and **target tax rate** in the sidebar.
-    - **Special Expenses** → add unlimited one-offs **below** on this page.
+    #### What am I editing?
+    - **Profile & Accounts** → in the **left sidebar**.
+    - **Social Security** → set **PIA** and **claim age** (sidebar).
+    - **Roth Conversion Controls** → **annual cap, start/end ages, target tax rate** (sidebar), tooltips (ⓘ) on each.
+    - **Special Expenses** → add one-offs **below** on this page.
     """)
 
 # Special Expenses Editor (main page)
@@ -381,24 +406,57 @@ n_paths = plan.get("_sim", {}).get("n_paths", 1000)
 with st.spinner("Running Monte Carlo..."):
     results = monte_carlo.simulate(plan, n_paths=n_paths, seed=42)
 
-# KPI + Charts
-k1, k2, k3 = st.columns([1, 2, 2], vertical_alignment="center")
-with k1:
-    st.subheader("Success Probability")
+# ===================== KPI + Charts (polished) =====================
+st.subheader("Results Overview")
+
+# --- Top KPI ribbon: gauge + quick stats ---
+gcol, kcol1, kcol2 = st.columns([1.2, 1, 1], vertical_alignment="center")
+
+with gcol:
+    st.caption("Success probability (Monte Carlo)")
     st.plotly_chart(success_gauge(results["success_prob"]), use_container_width=True)
-    st.metric("Median terminal net worth", f"${results['median_terminal']:,.0f}")
-with k2:
+
+with kcol1:
+    st.metric(
+        label="Median terminal net worth",
+        value=f"${results['median_terminal']:,.0f}",
+    )
+    st.caption("Median of ending net worth across all Monte Carlo paths.")
+
+with kcol2:
+    st.metric(
+        label="Simulation size",
+        value=f"{n_paths:,} paths",
+    )
+    st.caption("Number of randomized return paths used (seed = 42).")
+
+st.divider()
+
+# --- Main charts: net worth fan + median account mix ---
+c1, c2 = st.columns(2)
+
+with c1:
     st.subheader("Net Worth (Percentile Fan)")
     st.plotly_chart(
-        fan_chart(results["ages"], results["networth_p10"], results["networth_p50"], results["networth_p90"]),
+        fan_chart(
+            results["ages"],
+            results["networth_p10"],
+            results["networth_p50"],
+            results["networth_p90"],
+        ),
         use_container_width=True,
     )
-with k3:
+
+with c2:
     st.subheader("Account Balances (Median Path)")
     st.plotly_chart(
-        account_area_chart(results["ages"], results["acct_series_median"]),
+        account_area_chart(
+            results["ages"],
+            results["acct_series_median"],
+        ),
         use_container_width=True,
     )
+# ===================== end KPI + Charts =====================
 
 # Median ledger
 st.markdown("### Ledger (Median Path)")

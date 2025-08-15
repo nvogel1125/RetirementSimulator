@@ -5,6 +5,9 @@
 from typing import Dict, List, Sequence
 import plotly.graph_objects as go
 
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+
 
 # ---------- Net worth "fan" ----------
 def fan_chart(ages: Sequence[int],
@@ -45,49 +48,45 @@ def fan_chart(ages: Sequence[int],
 
 
 # ---------- Account balances (stacked) ----------
-def account_area_chart(ages: Sequence[int],
-                       series_dict: Dict[str, Sequence[float]],
-                       title: str = "Account Balances (Median Path)") -> go.Figure:
-    """
-    Stacked area for account balances.
-    series_dict keys (any subset): 'pre_tax', 'roth', 'taxable', 'cash'
-    """
-    order = ["taxable", "pre_tax", "roth", "cash"]  # stack order for readability
+def _fit(series, n):
+    arr = list(series)
+    if len(arr) < n: arr += [0.0] * (n - len(arr))
+    return arr[:n]
+
+def account_area_chart(ages, series_dict, title="Account Balances (Median Path)"):
+    n = len(ages)
+    order = ["taxable", "pre_tax", "roth", "cash"]
     fig = go.Figure()
     for k in order:
         if k in series_dict:
+            y = _fit(series_dict[k], n)
             fig.add_trace(go.Scatter(
-                x=ages, y=series_dict[k], mode="lines", name=k.replace("_", " ").title(),
+                x=ages, y=y, mode="lines", name=k.replace("_", " ").title(),
                 stackgroup="one",
                 hovertemplate="Age %{x}<br>$%{y:,.0f}<extra></extra>"
             ))
-
     fig.update_layout(
-        title=title,
-        template="plotly_white",
-        height=380,
+        title=title, template="plotly_white", height=380,
         margin=dict(l=10, r=10, t=40, b=10),
-        xaxis_title="Age",
-        yaxis_title="Dollars (nominal)"
+        xaxis_title="Age", yaxis_title="Dollars (nominal)"
     )
     return fig
 
 
 # ---------- Success gauge ----------
 def success_gauge(success_prob: float) -> go.Figure:
-    """0–100% radial gauge for Monte Carlo success probability."""
-    pct = round(float(success_prob) * 100, 1)
+    pct = max(0.0, min(100.0, float(success_prob) * 100.0))  # clamp 0–100
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=pct,
+        value=round(pct, 1),
         number={"suffix": "%"},
         gauge={
             "axis": {"range": [0, 100]},
             "bar": {"thickness": 0.35},
             "steps": [
-                {"range": [0, 60]},   # red (default theme color)
-                {"range": [60, 80]},  # yellow
-                {"range": [80, 100]}  # green
+                {"range": [0, 60],  "color": "#ef4444"},  # red-500
+                {"range": [60, 80], "color": "#f59e0b"},  # amber-500
+                {"range": [80, 100],"color": "#22c55e"},  # green-500
             ],
         }
     ))
