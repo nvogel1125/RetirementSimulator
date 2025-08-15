@@ -8,7 +8,7 @@ This repository contains a free, open–source retirement planning dashboard ins
 
 * **RMD and Social Security rules** – the calculators implement the new Required Minimum Distribution (RMD) ages enacted by the SECURE Act.  Starting in 2023 the age for first RMD rises to 73 and increases again to 75 in 2033; depending on birth year the required age is 73 for those born 1951‑1959 and 75 for those born 1960 or later【990996736051385†L120-L160】.  The Social Security module accepts your Primary Insurance Amount (PIA) and claiming age and applies early‑retirement reductions or delayed retirement credits to estimate annual benefits, similar to Boldin’s planner【54758672279077†L37-L49】.
 
-* **Taxes** – simplified U.S. federal tax brackets for 2025 are embedded and applied progressively to ordinary income.  Long‑term capital gains are taxed using the 0 %, 15 % and 20 % brackets.  These brackets come from IRS guidance for 2025 (via the Tax Foundation)【284892234855781†L236-L243】.  The tables live in `data/tax_tables.json` and can be edited to adjust for future years or different filing statuses.
+* **Taxes** – simplified U.S. federal tax brackets for 2025 are embedded and applied progressively to ordinary income.  Long‑term capital gains are taxed using the 0 %, 15 % and 20 % brackets.  These brackets come from IRS guidance for 2025 (via the Tax Foundation)【284892234855781†L236-L243】.  The tables live in `retirement_planner/data/tax_tables.json` and can be edited to adjust for future years or different filing statuses.
 
 * **Roth conversion modelling** – the system supports converting money from traditional (tax‑deferred) accounts to Roth accounts before RMD age.  Conversions add ordinary income in the year of the conversion and may either pay the tax from taxable savings or from the amount converted.  A simple Roth Conversion Explorer sweeps through different annual conversion caps and visualises the impact on taxes and probability of success.
 
@@ -23,7 +23,7 @@ This repository contains a free, open–source retirement planning dashboard ins
 
 * **Exports** – charts can be saved as PNG files; tabular data can be exported as CSV; and a comprehensive **Plan Summary** PDF bundles the main charts and metrics into a single document.  All exports occur locally; no personal data leaves your machine.
 
-* **Testing and Documentation** – core calculators are unit‑tested with `pytest`.  Every module includes docstrings and doctest examples to illustrate correct usage.  The simplified tax tables, RMD table and other assumptions are documented in `data/tax_tables.json` and in this README.
+* **Testing and Documentation** – core calculators are unit‑tested with `pytest`.  Every module includes docstrings and doctest examples to illustrate correct usage.  The simplified tax tables, RMD table and other assumptions are documented in `retirement_planner/data/tax_tables.json` and in this README.
 
 ## Installation and Running
 
@@ -68,22 +68,24 @@ Follow these steps to run the dashboard on a Windows computer.  All tools are fr
 ## Repository Structure
 
 ```
-retirement_planner/
+RetirementSimulator/
 ├── app.py               # Streamlit application entry point
-├── calculators/         # Core financial calculators (taxes, RMD, Social Security, Monte Carlo, Roth)
+├── retirement_planner/  # Core package housing calculators and components
 │   ├── __init__.py
-│   ├── taxes.py
-│   ├── rmd.py
-│   ├── social_security.py
-│   ├── monte_carlo.py
-│   └── roth.py
-├── components/          # UI components and charts for Streamlit
-│   ├── __init__.py
-│   ├── forms.py
-│   └── charts.py
-├── data/
-│   ├── tax_tables.json  # Simplified federal and state tax brackets (editable)
-│   └── sample_plan.json # Example scenario demonstrating full functionality
+│   ├── calculators/     # Financial calculators (taxes, RMD, Social Security, Monte Carlo, Roth)
+│   │   ├── __init__.py
+│   │   ├── taxes.py
+│   │   ├── rmd.py
+│   │   ├── social_security.py
+│   │   ├── monte_carlo.py
+│   │   └── roth.py
+│   ├── components/      # UI components and charts for Streamlit
+│   │   ├── __init__.py
+│   │   ├── forms.py
+│   │   └── charts.py
+│   └── data/
+│       ├── tax_tables.json  # Simplified federal and state tax brackets (editable)
+│       └── sample_plan.json # Example scenario demonstrating full functionality
 ├── tests/               # Unit tests for calculators
 │   ├── __init__.py
 │   ├── test_taxes.py
@@ -101,7 +103,7 @@ This project strives to balance realism with computational efficiency.  The foll
 
 * Returns are assumed to follow a normal distribution with user‑specified mean and standard deviation.  In reality, market returns may be better modelled by log‑normal distributions or fat‑tailed distributions; nonetheless, normal draws capture volatility in a straightforward way.  Accounts can optionally be correlated 100 % to reflect broad market movements, consistent with Boldin’s update to have all accounts move together【105533608753670†L252-L277】.
 
-* The tax engine uses simplified federal brackets for single filers in 2025【284892234855781†L236-L243】.  Additional schedules (married filing jointly, head of household) and detailed provisions like the Alternative Minimum Tax, self‑employment tax, and deductions beyond the standard deduction are outside the scope of this demonstration.  State taxes are loaded from `data/tax_tables.json` and default to the 2025 Michigan flat tax; you can edit this file for other states.
+* The tax engine uses simplified federal brackets for single filers in 2025【284892234855781†L236-L243】.  Additional schedules (married filing jointly, head of household) and detailed provisions like the Alternative Minimum Tax, self‑employment tax, and deductions beyond the standard deduction are outside the scope of this demonstration.  State taxes are loaded from `retirement_planner/data/tax_tables.json` and default to the 2025 Michigan flat tax; you can edit this file for other states.
 
 * Social Security calculations accept a Primary Insurance Amount (PIA) rather than building a full earnings history.  The model applies reductions or credits for claiming early or delaying beyond full retirement age【54758672279077†L37-L49】.  Spousal and survivor benefits are simplified: the surviving spouse receives the larger of their own or their spouse’s benefit after the first death.
 
