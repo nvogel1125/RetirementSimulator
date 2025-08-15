@@ -496,32 +496,77 @@ if "ledger_median" in results and any(r.get("roth_conversion", 0) for r in resul
     st.plotly_chart(fig_conv, use_container_width=True)
 # ===================== end KPI + Charts =====================
 
+# --- Roth conversions bar (Median Path) ---
+try:
+    lm = results.get("ledger_median", [])
+    # If items are strings (e.g., serialized rows), try to JSON-decode them.
+    if lm and isinstance(lm[0], str):
+        import json as _json
+        decoded = []
+        for s in lm:
+            if isinstance(s, str):
+                try:
+                    decoded.append(_json.loads(s))
+                except Exception:
+                    # keep the original string if it can't be parsed; we'll filter below
+                    decoded.append(s)
+            else:
+                decoded.append(s)
+        lm = decoded
+
+    # Keep only dict rows; skip anything malformed
+    lm_rows = [r for r in lm if isinstance(r, dict)]
+
+    if lm_rows:
+        ages_bar = [r.get("age") for r in lm_rows]
+        convs = [float(r.get("roth_conversion", 0.0) or 0.0) for r in lm_rows]
+
+        # Only draw if any conversion is non-zero
+        if any(c != 0 for c in convs):
+            import plotly.graph_objects as go
+            fig = go.Figure(go.Bar(x=ages_bar, y=convs, name="Roth conversions"))
+            fig.update_layout(
+                template="plotly_white",
+                height=260,
+                title="Roth Conversions (Median Path)",
+                xaxis_title="Age",
+                yaxis_title="Dollars",
+                margin=dict(l=10, r=10, t=40, b=10),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+except Exception as _e:
+    # Don't crash the app if something unexpected happens; surface a gentle note instead.
+    st.caption("Roth conversion chart unavailable for this run.")
+
+
 
 # Median ledger
+# Median ledger
 st.markdown("### Ledger (Median Path)")
-df = pd.DataFrame(results["ledger_median"])
-preferred_cols = ["age", "roth_conversion", "conversion_tax", "pre_tax", "roth", "taxable", "cash", "net_worth"]
-show_cols = [c for c in preferred_cols if c in df.columns]
-st.dataframe(df[show_cols] if show_cols else df, use_container_width=True, height=350)
+lm = results.get("ledger_median", [])
+
+# If rows are strings, try to decode; otherwise keep as-is
+if lm and isinstance(lm[0], str):
+    import json as _json
+    tmp = []
+    for s in lm:
+        if isinstance(s, str):
+            try:
+                tmp.append(_json.loads(s))
+            except Exception:
+                tmp.append({"row": s})
+        else:
+            tmp.append(s)
+    lm = tmp
+
+# Build a DataFrame from dict-like rows if possible; else fallback
+dict_rows = [r for r in lm if isinstance(r, dict)]
+df = pd.DataFrame(dict_rows) if dict_rows else pd.DataFrame(lm, columns=["row"])
+
+st.dataframe(df, use_container_width=True, height=350)
 st.download_button(
     "⬇️ CSV (median ledger)",
     data=df.to_csv(index=False).encode("utf-8"),
     file_name="ledger_median.csv",
     mime="text/csv",
 )
-
-# Scenario compare
-if st.session_state["scenarios"]:
-    st.markdown("### Scenario Compare")
-    rows = []
-    for name, sc_plan in st.session_state["scenarios"].items():
-        sc_res = monte_carlo.simulate(sc_plan, n_paths=n_paths, seed=123)
-        rows.append(scenario_kpis(name, sc_res))
-    sc_df = pd.DataFrame(rows)
-    st.dataframe(sc_df, use_container_width=True)
-    st.download_button(
-        "⬇️ Scenario KPIs (CSV)",
-        data=sc_df.to_csv(index=False).encode("utf-8"),
-        file_name="scenario_kpis.csv",
-        mime="text/csv",
-    )
