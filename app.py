@@ -9,7 +9,13 @@ import streamlit as st
 
 from retirement_planner.calculators import monte_carlo
 from retirement_planner.components.forms import plan_form, WIDGET_KEYS  # keys for sidebar widgets
-from retirement_planner.components.charts import fan_chart, account_area_chart, success_gauge
+from retirement_planner.components.charts import (
+    fan_chart,
+    account_area_chart,
+    success_gauge,
+    cash_flow_chart,
+    tax_chart,
+)
 
 
 # ---------- Page config ----------
@@ -388,12 +394,13 @@ c1, c2 = st.columns(2)
 
 with c1:
     st.subheader("Net Worth (Percentile Fan)")
+    percentiles = results.get("percentiles", {})
     st.plotly_chart(
         fan_chart(
             results["ages"],
-            results["networth_p10"],
-            results["networth_p50"],
-            results["networth_p90"],
+            percentiles.get("p10", results.get("networth_p10", [])),
+            percentiles.get("p50", results.get("networth_p50", [])),
+            percentiles.get("p90", results.get("networth_p90", [])),
         ),
         use_container_width=True,
     )
@@ -408,81 +415,73 @@ with c2:
         use_container_width=True,
     )
 
-# --- Conversions bar chart (makes conversion effects obvious) ---
-if "ledger_median" in results and any(r.get("roth_conversion", 0) for r in results["ledger_median"]):
-    import plotly.graph_objects as go
-    ages_bar = [r["age"] for r in results["ledger_median"]]
-    convs = [r.get("roth_conversion", 0.0) for r in results["ledger_median"]]
-    fig_conv = go.Figure(go.Bar(x=ages_bar, y=convs, name="Roth conversions"))
-    fig_conv.update_layout(
-        template="plotly_white", height=260, title="Roth Conversions (Median Path)",
-        xaxis_title="Age", yaxis_title="Dollars"
+# --- Cash flow and tax charts (Median Path) ---
+lm = results.get("ledger_median", {})
+ages_cf = lm.get("age", results["ages"])
+cc1, cc2 = st.columns(2)
+with cc1:
+    st.subheader("Annual Cash Flow")
+    st.plotly_chart(
+        cash_flow_chart(ages_cf, lm.get("income", []), lm.get("expenses", [])),
+        use_container_width=True,
     )
-    st.plotly_chart(fig_conv, use_container_width=True)
+with cc2:
+    st.subheader("Annual Federal Taxes")
+    st.plotly_chart(
+        tax_chart(ages_cf, {"ordinary": lm.get("taxes", [])}),
+        use_container_width=True,
+    )
 
-# --- Roth conversions bar (Median Path) ---
-try:
-    lm = results.get("ledger_median", [])
-    # If items are strings (e.g., serialized rows), try to JSON-decode them.
-    if lm and isinstance(lm[0], str):
-        import json as _json
-        decoded = []
-        for s in lm:
-            if isinstance(s, str):
-                try:
-                    decoded.append(_json.loads(s))
-                except Exception:
-                    # keep the original string if it can't be parsed; we'll filter below
-                    decoded.append(s)
-            else:
-                decoded.append(s)
-        lm = decoded
-
-    # Keep only dict rows; skip anything malformed
+# --- Roth conversions bar chart (Median Path) ---
+if isinstance(lm, dict):
+    convs = [float(x or 0.0) for x in lm.get("roth_conversion", [])]
+    if any(c != 0 for c in convs):
+        import plotly.graph_objects as go
+        ages_bar = lm.get("age", [])
+        fig_conv = go.Figure(go.Bar(x=ages_bar, y=convs, name="Roth conversions"))
+        fig_conv.update_layout(
+            template="plotly_white",
+            height=260,
+            title="Roth Conversions (Median Path)",
+            xaxis_title="Age",
+            yaxis_title="Dollars",
+            margin=dict(l=10, r=10, t=40, b=10),
+        )
+        st.plotly_chart(fig_conv, use_container_width=True)
+else:
     lm_rows = [r for r in lm if isinstance(r, dict)]
-
-    if lm_rows:
+    convs = [float(r.get("roth_conversion", 0.0) or 0.0) for r in lm_rows]
+    if any(c != 0 for c in convs):
+        import plotly.graph_objects as go
         ages_bar = [r.get("age") for r in lm_rows]
-        convs = [float(r.get("roth_conversion", 0.0) or 0.0) for r in lm_rows]
-
-        # Only draw if any conversion is non-zero
-        if any(c != 0 for c in convs):
-            import plotly.graph_objects as go
-            fig = go.Figure(go.Bar(x=ages_bar, y=convs, name="Roth conversions"))
-            fig.update_layout(
-                template="plotly_white",
-                height=260,
-                title="Roth Conversions (Median Path)",
-                xaxis_title="Age",
-                yaxis_title="Dollars",
-                margin=dict(l=10, r=10, t=40, b=10),
-            )
-            st.plotly_chart(fig, use_container_width=True)
-except Exception as _e:
-    # Don't crash the app if something unexpected happens; surface a gentle note instead.
-    st.caption("Roth conversion chart unavailable for this run.")
+        fig_conv = go.Figure(go.Bar(x=ages_bar, y=convs, name="Roth conversions"))
+        fig_conv.update_layout(
+            template="plotly_white",
+            height=260,
+            title="Roth Conversions (Median Path)",
+            xaxis_title="Age",
+            yaxis_title="Dollars",
+            margin=dict(l=10, r=10, t=40, b=10),
+        )
+        st.plotly_chart(fig_conv, use_container_width=True)
 
 # --- Median ledger ---
 st.markdown("### Ledger (Median Path)")
-lm = results.get("ledger_median", [])
-
-# If rows are strings, try to decode; otherwise keep as-is
-if lm and isinstance(lm[0], str):
-    import json as _json
-    tmp = []
+if isinstance(lm, dict):
+    df = pd.DataFrame(lm)
+else:
+    lm_rows = []
     for s in lm:
         if isinstance(s, str):
             try:
-                tmp.append(_json.loads(s))
+                lm_rows.append(json.loads(s))
             except Exception:
-                tmp.append({"row": s})
+                lm_rows.append({"row": s})
+        elif isinstance(s, dict):
+            lm_rows.append(s)
         else:
-            tmp.append(s)
-    lm = tmp
-
-# Build a DataFrame from dict-like rows if possible; else fallback
-dict_rows = [r for r in lm if isinstance(r, dict)]
-df = pd.DataFrame(dict_rows) if dict_rows else pd.DataFrame(lm, columns=["row"])
+            lm_rows.append({"row": s})
+    df = pd.DataFrame(lm_rows)
 
 st.dataframe(df, use_container_width=True, height=350)
 st.download_button(

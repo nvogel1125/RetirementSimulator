@@ -78,6 +78,48 @@ def account_area_chart(ages, series_dict, title="Account Balances (Median Path)"
     return fig
 
 
+# ---------- Cash flow line chart ----------
+def cash_flow_chart(
+    ages: Sequence[int],
+    income: Sequence[float],
+    expenses: Sequence[float],
+    title: str = "Income vs Expenses",
+) -> go.Figure:
+    """Line chart comparing annual income and expenses."""
+    n = len(ages)
+    inc = _fit(income, n)
+    exp = _fit(expenses, n)
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=ages,
+            y=inc,
+            mode="lines",
+            name="Income",
+            hovertemplate="Age %{x}<br>$%{y:,.0f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=ages,
+            y=exp,
+            mode="lines",
+            name="Expenses",
+            hovertemplate="Age %{x}<br>$%{y:,.0f}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title=title,
+        template="plotly_white",
+        height=380,
+        margin=dict(l=10, r=10, t=40, b=10),
+        xaxis_title="Age",
+        yaxis_title="Dollars (nominal)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
+
+
 # ---------- Success gauge ----------
 def success_gauge(success_prob: float) -> go.Figure:
     pct = max(0.0, min(100.0, float(success_prob) * 100.0))  # clamp 0–100
