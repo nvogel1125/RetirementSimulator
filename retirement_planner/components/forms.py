@@ -156,12 +156,18 @@ def plan_form():
     )
 
     # -------- Withdrawal Strategy --------
+     # -------- Withdrawal Strategy --------
     st.sidebar.header("Withdrawal Strategy")
     strategy_options = ["standard", "proportional", "tax_bracket"]
     strategy_labels = {
         "standard": "Taxable → Traditional → Roth",
         "proportional": "Proportional taxable/traditional",
         "tax_bracket": "Fill bracket with traditional",
+    }
+    strategy_help = {
+        "standard": "Withdraw from taxable accounts first, then traditional accounts, and leave Roth assets for last.",
+        "proportional": "Each year, pull from taxable and traditional accounts in proportion to their balances; tap Roth only when necessary.",
+        "tax_bracket": "Use traditional withdrawals to fill the current tax bracket, then withdraw from taxable accounts, saving Roth for last.",
     }
     strategy_default = _d("withdrawal_strategy", "standard")
     strategy = st.sidebar.selectbox(
@@ -170,7 +176,10 @@ def plan_form():
         index=strategy_options.index(strategy_default) if strategy_default in strategy_options else 0,
         format_func=lambda s: strategy_labels.get(s, s),
         key=WIDGET_KEYS["withdrawal_strategy"],
+        help="Choose how retirement withdrawals are sequenced across accounts.",
     )
+    st.sidebar.caption(strategy_help.get(strategy, ""))
+
 
     # -------- Assumptions / Sim --------
     st.sidebar.header("Assumptions")
