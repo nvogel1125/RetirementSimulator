@@ -12,28 +12,23 @@ WIDGET_KEYS = {
     "pre_tax_401k_balance": "in_pre_tax_401k_balance",
     "pre_tax_401k_contrib": "in_pre_tax_401k_contrib",
     "pre_tax_401k_mean": "in_pre_tax_401k_mean",
-    "pre_tax_401k_stdev": "in_pre_tax_401k_stdev",
 
     "pre_tax_ira_balance": "in_pre_tax_ira_balance",
     "pre_tax_ira_contrib": "in_pre_tax_ira_contrib",
     "pre_tax_ira_mean": "in_pre_tax_ira_mean",
-    "pre_tax_ira_stdev": "in_pre_tax_ira_stdev",
 
     # Roth accounts
     "roth_401k_balance": "in_roth_401k_balance",
     "roth_401k_contrib": "in_roth_401k_contrib",
     "roth_401k_mean": "in_roth_401k_mean",
-    "roth_401k_stdev": "in_roth_401k_stdev",
 
     "roth_ira_balance": "in_roth_ira_balance",
     "roth_ira_contrib": "in_roth_ira_contrib",
     "roth_ira_mean": "in_roth_ira_mean",
-    "roth_ira_stdev": "in_roth_ira_stdev",
 
     "taxable_balance": "in_taxable_balance",
     "taxable_contrib": "in_taxable_contrib",
     "taxable_mean": "in_taxable_mean",
-    "taxable_stdev": "in_taxable_stdev",
 
     "cash_balance": "in_cash_balance",
 
@@ -105,11 +100,6 @@ def plan_form():
             "Assumed mean return", step=0.005,
             value=_d("pre_tax_401k_mean", 0.05), key=WIDGET_KEYS["pre_tax_401k_mean"],
         )
-        pre_tax_401k_stdev = st.number_input(
-            "Return stdev", step=0.005,
-            value=_d("pre_tax_401k_stdev", 0.10), key=WIDGET_KEYS["pre_tax_401k_stdev"],
-            help="Volatility of yearly returns; 0.10 ≈ ±10%.",
-        )
 
     with st.sidebar.expander("Traditional IRA", expanded=False):
         pre_tax_ira_balance = st.number_input(
@@ -124,11 +114,6 @@ def plan_form():
         pre_tax_ira_mean = st.number_input(
             "Assumed mean return", step=0.005,
             value=_d("pre_tax_ira_mean", 0.05), key=WIDGET_KEYS["pre_tax_ira_mean"],
-        )
-        pre_tax_ira_stdev = st.number_input(
-            "Return stdev", step=0.005,
-            value=_d("pre_tax_ira_stdev", 0.10), key=WIDGET_KEYS["pre_tax_ira_stdev"],
-            help="Volatility of yearly returns; 0.10 ≈ ±10%.",
         )
 
     with st.sidebar.expander("Roth 401k", expanded=False):
@@ -145,11 +130,6 @@ def plan_form():
             "Assumed mean return", step=0.005,
             value=_d("roth_401k_mean", 0.06), key=WIDGET_KEYS["roth_401k_mean"],
         )
-        roth_401k_stdev = st.number_input(
-            "Return stdev", step=0.005,
-            value=_d("roth_401k_stdev", 0.12), key=WIDGET_KEYS["roth_401k_stdev"],
-            help="Volatility of yearly returns; 0.12 ≈ ±12%.",
-        )
 
     with st.sidebar.expander("Roth IRA", expanded=False):
         roth_ira_balance = st.number_input(
@@ -165,11 +145,6 @@ def plan_form():
             "Assumed mean return", step=0.005,
             value=_d("roth_ira_mean", 0.06), key=WIDGET_KEYS["roth_ira_mean"],
         )
-        roth_ira_stdev = st.number_input(
-            "Return stdev", step=0.005,
-            value=_d("roth_ira_stdev", 0.12), key=WIDGET_KEYS["roth_ira_stdev"],
-            help="Volatility of yearly returns; 0.12 ≈ ±12%.",
-        )
 
     with st.sidebar.expander("Taxable / Brokerage", expanded=False):
         taxable_balance = st.number_input(
@@ -183,11 +158,6 @@ def plan_form():
         taxable_mean = st.number_input(
             "Assumed mean return", step=0.005,
             value=_d("taxable_mean", 0.06), key=WIDGET_KEYS["taxable_mean"],
-        )
-        taxable_stdev = st.number_input(
-            "Return stdev", step=0.005,
-            value=_d("taxable_stdev", 0.12), key=WIDGET_KEYS["taxable_stdev"],
-            help="Volatility of yearly returns; 0.12 ≈ ±12%.",
         )
 
     with st.sidebar.expander("Cash", expanded=False):
@@ -229,7 +199,9 @@ def plan_form():
 
     # -------- Roth Conversion --------
     st.sidebar.header("Roth Conversion")
-    st.sidebar.caption("Convert pre-tax assets to Roth before RMD age to manage taxes.")
+    st.sidebar.caption(
+        "Convert pre-tax assets to Roth before Required Minimum Distribution (RMD) age to manage taxes."
+    )
     rc_cap = st.sidebar.number_input(
         "Annual conversion cap (0–1)", min_value=0.0, max_value=1.0, step=0.01,
         value=_d("rc_cap",0.0), key=WIDGET_KEYS["rc_cap"],
@@ -288,36 +260,36 @@ def plan_form():
     )
 
     # Return a full plan dict
-    accounts = {
+        accounts = {
         "pre_tax_401k": {
             "balance": float(pre_tax_401k_balance),
             "contribution": float(pre_tax_401k_contrib),
             "mean_return": float(pre_tax_401k_mean),
-            "stdev_return": float(pre_tax_401k_stdev),
+            "stdev_return": 0.10,
         },
         "pre_tax_ira": {
             "balance": float(pre_tax_ira_balance),
             "contribution": float(pre_tax_ira_contrib),
             "mean_return": float(pre_tax_ira_mean),
-            "stdev_return": float(pre_tax_ira_stdev),
+            "stdev_return": 0.10,
         },
         "roth_401k": {
             "balance": float(roth_401k_balance),
             "contribution": float(roth_401k_contrib),
             "mean_return": float(roth_401k_mean),
-            "stdev_return": float(roth_401k_stdev),
+            "stdev_return": 0.12,
         },
         "roth_ira": {
             "balance": float(roth_ira_balance),
             "contribution": float(roth_ira_contrib),
             "mean_return": float(roth_ira_mean),
-            "stdev_return": float(roth_ira_stdev),
+            "stdev_return": 0.12,
         },
         "taxable": {
             "balance": float(taxable_balance),
             "contribution": float(taxable_contrib),
             "mean_return": float(taxable_mean),
-            "stdev_return": float(taxable_stdev),
+            "stdev_return": 0.12,
         },
         "cash": {"balance": float(cash_balance)},
     }
@@ -329,20 +301,14 @@ def plan_form():
         [accounts["pre_tax_401k"]["mean_return"], accounts["pre_tax_ira"]["mean_return"]],
         [accounts["pre_tax_401k"]["balance"], accounts["pre_tax_ira"]["balance"]],
     )
-    pre_stdev = _wavg(
-        [accounts["pre_tax_401k"]["stdev_return"], accounts["pre_tax_ira"]["stdev_return"]],
-        [accounts["pre_tax_401k"]["balance"], accounts["pre_tax_ira"]["balance"]],
-    )
+    pre_stdev = 0.10
     roth_bal = accounts["roth_401k"]["balance"] + accounts["roth_ira"]["balance"]
     roth_con = accounts["roth_401k"]["contribution"] + accounts["roth_ira"]["contribution"]
     roth_mean = _wavg(
         [accounts["roth_401k"]["mean_return"], accounts["roth_ira"]["mean_return"]],
         [accounts["roth_401k"]["balance"], accounts["roth_ira"]["balance"]],
     )
-    roth_stdev = _wavg(
-        [accounts["roth_401k"]["stdev_return"], accounts["roth_ira"]["stdev_return"]],
-        [accounts["roth_401k"]["balance"], accounts["roth_ira"]["balance"]],
-    )
+    roth_stdev = 0.12
     accounts["pre_tax"] = {
         "balance": pre_bal,
         "contribution": pre_con,
@@ -355,6 +321,7 @@ def plan_form():
         "mean_return": roth_mean,
         "stdev_return": roth_stdev,
     }
+
 
     plan = {
         "current_age": int(current_age),

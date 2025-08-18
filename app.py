@@ -236,7 +236,7 @@ def header_bar():
             st.markdown(
                 """
                 ### **NVision Retirement Simulator**
-                _Model scenarios, Monte Carlo success, taxes/RMDs, and Roth conversions._
+                _Model scenarios, Monte Carlo success, taxes and Required Minimum Distributions (RMDs), and Roth conversions._
                 """
             )
 
