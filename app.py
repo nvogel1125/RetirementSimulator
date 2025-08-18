@@ -236,7 +236,7 @@ def header_bar():
             st.markdown(
                 """
                 ### **NVision Retirement Simulator**
-                _Model scenarios, Monte Carlo success, taxes/RMDs, and Roth conversions._
+                _Model scenarios, Monte Carlo success, taxes and Required Minimum Distributions (RMDs), and Roth conversions._
                 """
             )
 
@@ -311,11 +311,12 @@ if st.sidebar.button("➕ Add Expense"):
 plan["expenses"]["special"] = specials
 
 st.sidebar.divider()
-st.sidebar.header("Save/Load Scenarios")
-scenario_name = st.sidebar.text_input("Scenario name")
+st.sidebar.header("Save / Load Scenarios")
+st.sidebar.caption("Name and save plans locally, or import from a JSON file.")
+scenario_name = st.sidebar.text_input("Scenario name", help="Label for saving to your local library.")
 c1, c2 = st.sidebar.columns(2)
 with c1:
-    if st.button("Save"):
+    if st.button("Save to library"):
         if scenario_name:
             save_user_scenario(st.session_state["username"], scenario_name, plan)
             st.session_state["scenarios"][scenario_name] = plan
@@ -325,7 +326,7 @@ with c1:
 with c2:
     scenarios = load_user_scenarios(st.session_state["username"])
     options = [s["name"] for s in scenarios]
-    load_name = st.selectbox("Load scenario", [""] + options)
+    load_name = st.selectbox("Load saved", [""] + options)
     if load_name:
         for s in scenarios:
             if s["name"] == load_name:
@@ -334,6 +335,18 @@ with c2:
                 st.session_state["special_editor_rows"] = s["plan"].get("expenses", {}).get("special", [])
                 st.sidebar.success(f"Loaded '{load_name}'")
                 st.rerun()
+
+uploaded = st.sidebar.file_uploader("Upload plan JSON", type="json")
+if uploaded:
+    try:
+        data = json.load(uploaded)
+        st.session_state["form_defaults"] = deepcopy(data)
+        st.session_state["plan"] = deepcopy(data)
+        st.session_state["special_editor_rows"] = data.get("expenses", {}).get("special", [])
+        st.sidebar.success("Plan loaded from file.")
+        st.rerun()
+    except Exception:
+        st.sidebar.error("Invalid JSON file.")
 
 # --- Main page: run button ---
 st.header("Run Simulation")

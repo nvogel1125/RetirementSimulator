@@ -101,7 +101,7 @@ RetirementSimulator/
 
 This project strives to balance realism with computational efficiency.  The following simplifications are made:
 
-* Returns are assumed to follow a normal distribution with user‑specified mean and standard deviation.  In reality, market returns may be better modelled by log‑normal distributions or fat‑tailed distributions; nonetheless, normal draws capture volatility in a straightforward way.  Accounts can optionally be correlated 100 % to reflect broad market movements, consistent with Boldin’s update to have all accounts move together【105533608753670†L252-L277】.
+* Returns are assumed to follow a normal distribution around a user‑specified mean with built‑in volatility assumptions for each account type.  Accounts can optionally be correlated 100 % to reflect broad market movements, consistent with Boldin’s update to have all accounts move together【105533608753670†L252-L277】.
 
 * The tax engine uses simplified federal brackets for single filers in 2025【284892234855781†L236-L243】.  Additional schedules (married filing jointly, head of household) and detailed provisions like the Alternative Minimum Tax, self‑employment tax, and deductions beyond the standard deduction are outside the scope of this demonstration.  State taxes are loaded from `retirement_planner/data/tax_tables.json` and default to the 2025 Michigan flat tax; you can edit this file for other states.
 
