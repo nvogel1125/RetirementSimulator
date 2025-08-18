@@ -260,7 +260,7 @@ def plan_form():
     )
 
     # Return a full plan dict
-        accounts = {
+    accounts = {
         "pre_tax_401k": {
             "balance": float(pre_tax_401k_balance),
             "contribution": float(pre_tax_401k_contrib),
