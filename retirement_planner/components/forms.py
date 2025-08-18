@@ -8,15 +8,27 @@ WIDGET_KEYS = {
     "state": "in_state",
     "filing": "in_filing",
 
-    "pre_tax_balance": "in_pre_tax_balance",
-    "pre_tax_contrib": "in_pre_tax_contrib",
-    "pre_tax_mean": "in_pre_tax_mean",
-    "pre_tax_stdev": "in_pre_tax_stdev",
+    # Traditional / pre-tax accounts
+    "pre_tax_401k_balance": "in_pre_tax_401k_balance",
+    "pre_tax_401k_contrib": "in_pre_tax_401k_contrib",
+    "pre_tax_401k_mean": "in_pre_tax_401k_mean",
+    "pre_tax_401k_stdev": "in_pre_tax_401k_stdev",
 
-    "roth_balance": "in_roth_balance",
-    "roth_contrib": "in_roth_contrib",
-    "roth_mean": "in_roth_mean",
-    "roth_stdev": "in_roth_stdev",
+    "pre_tax_ira_balance": "in_pre_tax_ira_balance",
+    "pre_tax_ira_contrib": "in_pre_tax_ira_contrib",
+    "pre_tax_ira_mean": "in_pre_tax_ira_mean",
+    "pre_tax_ira_stdev": "in_pre_tax_ira_stdev",
+
+    # Roth accounts
+    "roth_401k_balance": "in_roth_401k_balance",
+    "roth_401k_contrib": "in_roth_401k_contrib",
+    "roth_401k_mean": "in_roth_401k_mean",
+    "roth_401k_stdev": "in_roth_401k_stdev",
+
+    "roth_ira_balance": "in_roth_ira_balance",
+    "roth_ira_contrib": "in_roth_ira_contrib",
+    "roth_ira_mean": "in_roth_ira_mean",
+    "roth_ira_stdev": "in_roth_ira_stdev",
 
     "taxable_balance": "in_taxable_balance",
     "taxable_contrib": "in_taxable_contrib",
@@ -45,6 +57,10 @@ WIDGET_KEYS = {
 
 def _d(key, fallback):
     return st.session_state.get("form_defaults", {}).get(key, fallback)
+
+def _wavg(vals, weights):
+    total = sum(weights)
+    return sum(v * w for v, w in zip(vals, weights)) / total if total > 0 else 0.0
 
 def plan_form():
     # -------- Profile --------
@@ -75,39 +91,111 @@ def plan_form():
 
     # -------- Accounts --------
     st.sidebar.header("Accounts")
-    with st.sidebar.expander("Tax-Deferred (401k / Traditional IRA)", expanded=False):
-        pre_tax_balance = st.number_input("Balance", min_value=0.0,
-                                          value=_d("pre_tax_balance",0.0), key=WIDGET_KEYS["pre_tax_balance"])
-        pre_tax_contrib = st.number_input("Annual contribution", min_value=0.0,
-                                          value=_d("pre_tax_contrib",0.0), key=WIDGET_KEYS["pre_tax_contrib"])
-        pre_tax_mean    = st.number_input("Assumed mean return", step=0.005,
-                                          value=_d("pre_tax_mean",0.05), key=WIDGET_KEYS["pre_tax_mean"])
-        pre_tax_stdev   = st.number_input("Return stdev", step=0.005,
-                                          value=_d("pre_tax_stdev",0.10), key=WIDGET_KEYS["pre_tax_stdev"])
+    with st.sidebar.expander("Traditional 401k", expanded=False):
+        pre_tax_401k_balance = st.number_input(
+            "Balance", min_value=0.0,
+            value=_d("pre_tax_401k_balance", 0.0), key=WIDGET_KEYS["pre_tax_401k_balance"],
+        )
+        pre_tax_401k_contrib = st.number_input(
+            "Annual contribution", min_value=0.0,
+            value=_d("pre_tax_401k_contrib", 0.0), key=WIDGET_KEYS["pre_tax_401k_contrib"],
+            help="Maximum $23,000/yr (2024).",
+        )
+        pre_tax_401k_mean = st.number_input(
+            "Assumed mean return", step=0.005,
+            value=_d("pre_tax_401k_mean", 0.05), key=WIDGET_KEYS["pre_tax_401k_mean"],
+        )
+        pre_tax_401k_stdev = st.number_input(
+            "Return stdev", step=0.005,
+            value=_d("pre_tax_401k_stdev", 0.10), key=WIDGET_KEYS["pre_tax_401k_stdev"],
+            help="Volatility of yearly returns; 0.10 ≈ ±10%.",
+        )
 
-    with st.sidebar.expander("Roth", expanded=False):
-        roth_balance = st.number_input("Balance", min_value=0.0,
-                                       value=_d("roth_balance",0.0), key=WIDGET_KEYS["roth_balance"])
-        roth_contrib = st.number_input("Annual contribution", min_value=0.0,
-                                       value=_d("roth_contrib",0.0), key=WIDGET_KEYS["roth_contrib"])
-        roth_mean    = st.number_input("Assumed mean return", step=0.005,
-                                       value=_d("roth_mean",0.06), key=WIDGET_KEYS["roth_mean"])
-        roth_stdev   = st.number_input("Return stdev", step=0.005,
-                                       value=_d("roth_stdev",0.12), key=WIDGET_KEYS["roth_stdev"])
+    with st.sidebar.expander("Traditional IRA", expanded=False):
+        pre_tax_ira_balance = st.number_input(
+            "Balance", min_value=0.0,
+            value=_d("pre_tax_ira_balance", 0.0), key=WIDGET_KEYS["pre_tax_ira_balance"],
+        )
+        pre_tax_ira_contrib = st.number_input(
+            "Annual contribution", min_value=0.0,
+            value=_d("pre_tax_ira_contrib", 0.0), key=WIDGET_KEYS["pre_tax_ira_contrib"],
+            help="Maximum $7,000/yr (2024).",
+        )
+        pre_tax_ira_mean = st.number_input(
+            "Assumed mean return", step=0.005,
+            value=_d("pre_tax_ira_mean", 0.05), key=WIDGET_KEYS["pre_tax_ira_mean"],
+        )
+        pre_tax_ira_stdev = st.number_input(
+            "Return stdev", step=0.005,
+            value=_d("pre_tax_ira_stdev", 0.10), key=WIDGET_KEYS["pre_tax_ira_stdev"],
+            help="Volatility of yearly returns; 0.10 ≈ ±10%.",
+        )
+
+    with st.sidebar.expander("Roth 401k", expanded=False):
+        roth_401k_balance = st.number_input(
+            "Balance", min_value=0.0,
+            value=_d("roth_401k_balance", 0.0), key=WIDGET_KEYS["roth_401k_balance"],
+        )
+        roth_401k_contrib = st.number_input(
+            "Annual contribution", min_value=0.0,
+            value=_d("roth_401k_contrib", 0.0), key=WIDGET_KEYS["roth_401k_contrib"],
+            help="Maximum $23,000/yr (2024).",
+        )
+        roth_401k_mean = st.number_input(
+            "Assumed mean return", step=0.005,
+            value=_d("roth_401k_mean", 0.06), key=WIDGET_KEYS["roth_401k_mean"],
+        )
+        roth_401k_stdev = st.number_input(
+            "Return stdev", step=0.005,
+            value=_d("roth_401k_stdev", 0.12), key=WIDGET_KEYS["roth_401k_stdev"],
+            help="Volatility of yearly returns; 0.12 ≈ ±12%.",
+        )
+
+    with st.sidebar.expander("Roth IRA", expanded=False):
+        roth_ira_balance = st.number_input(
+            "Balance", min_value=0.0,
+            value=_d("roth_ira_balance", 0.0), key=WIDGET_KEYS["roth_ira_balance"],
+        )
+        roth_ira_contrib = st.number_input(
+            "Annual contribution", min_value=0.0,
+            value=_d("roth_ira_contrib", 0.0), key=WIDGET_KEYS["roth_ira_contrib"],
+            help="Maximum $7,000/yr (2024) and subject to income limits.",
+        )
+        roth_ira_mean = st.number_input(
+            "Assumed mean return", step=0.005,
+            value=_d("roth_ira_mean", 0.06), key=WIDGET_KEYS["roth_ira_mean"],
+        )
+        roth_ira_stdev = st.number_input(
+            "Return stdev", step=0.005,
+            value=_d("roth_ira_stdev", 0.12), key=WIDGET_KEYS["roth_ira_stdev"],
+            help="Volatility of yearly returns; 0.12 ≈ ±12%.",
+        )
 
     with st.sidebar.expander("Taxable / Brokerage", expanded=False):
-        taxable_balance = st.number_input("Balance", min_value=0.0,
-                                          value=_d("taxable_balance",0.0), key=WIDGET_KEYS["taxable_balance"])
-        taxable_contrib = st.number_input("Annual contribution", min_value=0.0,
-                                          value=_d("taxable_contrib",0.0), key=WIDGET_KEYS["taxable_contrib"])
-        taxable_mean    = st.number_input("Assumed mean return", step=0.005,
-                                          value=_d("taxable_mean",0.06), key=WIDGET_KEYS["taxable_mean"])
-        taxable_stdev   = st.number_input("Return stdev", step=0.005,
-                                          value=_d("taxable_stdev",0.12), key=WIDGET_KEYS["taxable_stdev"])
+        taxable_balance = st.number_input(
+            "Balance", min_value=0.0,
+            value=_d("taxable_balance", 0.0), key=WIDGET_KEYS["taxable_balance"],
+        )
+        taxable_contrib = st.number_input(
+            "Annual contribution", min_value=0.0,
+            value=_d("taxable_contrib", 0.0), key=WIDGET_KEYS["taxable_contrib"],
+        )
+        taxable_mean = st.number_input(
+            "Assumed mean return", step=0.005,
+            value=_d("taxable_mean", 0.06), key=WIDGET_KEYS["taxable_mean"],
+        )
+        taxable_stdev = st.number_input(
+            "Return stdev", step=0.005,
+            value=_d("taxable_stdev", 0.12), key=WIDGET_KEYS["taxable_stdev"],
+            help="Volatility of yearly returns; 0.12 ≈ ±12%.",
+        )
 
     with st.sidebar.expander("Cash", expanded=False):
-        cash_balance = st.number_input("Balance", min_value=0.0,
-                                       value=_d("cash_balance",0.0), key=WIDGET_KEYS["cash_balance"])
+        cash_balance = st.number_input(
+            "Balance", min_value=0.0,
+            value=_d("cash_balance", 0.0), key=WIDGET_KEYS["cash_balance"],
+            help="Emergency funds or checking accounts.",
+        )
 
     # -------- Income --------
     st.sidebar.header("Income")
@@ -128,13 +216,20 @@ def plan_form():
 
     # -------- Social Security --------
     st.sidebar.header("Social Security")
-    ss_pia = st.sidebar.number_input("PIA (monthly at FRA)", min_value=0.0,
-                             value=_d("ss_pia",0.0), key=WIDGET_KEYS["ss_pia"])
-    ss_claim_age = st.sidebar.number_input("Claiming age", min_value=62, max_value=70,
-                                   value=_d("ss_claim_age",67), key=WIDGET_KEYS["ss_claim_age"])
+    ss_pia = st.sidebar.number_input(
+        "PIA (monthly at FRA)", min_value=0.0,
+        value=_d("ss_pia", 0.0), key=WIDGET_KEYS["ss_pia"],
+        help="Primary Insurance Amount — benefit at full retirement age (67).",
+    )
+    ss_claim_age = st.sidebar.number_input(
+        "Claiming age", min_value=62, max_value=70,
+        value=_d("ss_claim_age", 67), key=WIDGET_KEYS["ss_claim_age"],
+        help="Earliest claim is 62; waiting until 70 increases the benefit.",
+    )
 
     # -------- Roth Conversion --------
     st.sidebar.header("Roth Conversion")
+    st.sidebar.caption("Convert pre-tax assets to Roth before RMD age to manage taxes.")
     rc_cap = st.sidebar.number_input(
         "Annual conversion cap (0–1)", min_value=0.0, max_value=1.0, step=0.01,
         value=_d("rc_cap",0.0), key=WIDGET_KEYS["rc_cap"],
@@ -193,21 +288,81 @@ def plan_form():
     )
 
     # Return a full plan dict
+    accounts = {
+        "pre_tax_401k": {
+            "balance": float(pre_tax_401k_balance),
+            "contribution": float(pre_tax_401k_contrib),
+            "mean_return": float(pre_tax_401k_mean),
+            "stdev_return": float(pre_tax_401k_stdev),
+        },
+        "pre_tax_ira": {
+            "balance": float(pre_tax_ira_balance),
+            "contribution": float(pre_tax_ira_contrib),
+            "mean_return": float(pre_tax_ira_mean),
+            "stdev_return": float(pre_tax_ira_stdev),
+        },
+        "roth_401k": {
+            "balance": float(roth_401k_balance),
+            "contribution": float(roth_401k_contrib),
+            "mean_return": float(roth_401k_mean),
+            "stdev_return": float(roth_401k_stdev),
+        },
+        "roth_ira": {
+            "balance": float(roth_ira_balance),
+            "contribution": float(roth_ira_contrib),
+            "mean_return": float(roth_ira_mean),
+            "stdev_return": float(roth_ira_stdev),
+        },
+        "taxable": {
+            "balance": float(taxable_balance),
+            "contribution": float(taxable_contrib),
+            "mean_return": float(taxable_mean),
+            "stdev_return": float(taxable_stdev),
+        },
+        "cash": {"balance": float(cash_balance)},
+    }
+
+    # aggregated totals for backward compatibility
+    pre_bal = accounts["pre_tax_401k"]["balance"] + accounts["pre_tax_ira"]["balance"]
+    pre_con = accounts["pre_tax_401k"]["contribution"] + accounts["pre_tax_ira"]["contribution"]
+    pre_mean = _wavg(
+        [accounts["pre_tax_401k"]["mean_return"], accounts["pre_tax_ira"]["mean_return"]],
+        [accounts["pre_tax_401k"]["balance"], accounts["pre_tax_ira"]["balance"]],
+    )
+    pre_stdev = _wavg(
+        [accounts["pre_tax_401k"]["stdev_return"], accounts["pre_tax_ira"]["stdev_return"]],
+        [accounts["pre_tax_401k"]["balance"], accounts["pre_tax_ira"]["balance"]],
+    )
+    roth_bal = accounts["roth_401k"]["balance"] + accounts["roth_ira"]["balance"]
+    roth_con = accounts["roth_401k"]["contribution"] + accounts["roth_ira"]["contribution"]
+    roth_mean = _wavg(
+        [accounts["roth_401k"]["mean_return"], accounts["roth_ira"]["mean_return"]],
+        [accounts["roth_401k"]["balance"], accounts["roth_ira"]["balance"]],
+    )
+    roth_stdev = _wavg(
+        [accounts["roth_401k"]["stdev_return"], accounts["roth_ira"]["stdev_return"]],
+        [accounts["roth_401k"]["balance"], accounts["roth_ira"]["balance"]],
+    )
+    accounts["pre_tax"] = {
+        "balance": pre_bal,
+        "contribution": pre_con,
+        "mean_return": pre_mean,
+        "stdev_return": pre_stdev,
+    }
+    accounts["roth"] = {
+        "balance": roth_bal,
+        "contribution": roth_con,
+        "mean_return": roth_mean,
+        "stdev_return": roth_stdev,
+    }
+
     plan = {
         "current_age": int(current_age),
         "retire_age": int(retire_age),
         "end_age": int(end_age),
         "state": state,
         "filing_status": filing,
-        "accounts": {
-            "pre_tax":  {"balance": float(pre_tax_balance), "contribution": float(pre_tax_contrib),
-                         "mean_return": float(pre_tax_mean), "stdev_return": float(pre_tax_stdev)},
-            "roth":     {"balance": float(roth_balance),    "contribution": float(roth_contrib),
-                         "mean_return": float(roth_mean),    "stdev_return": float(roth_stdev)},
-            "taxable":  {"balance": float(taxable_balance), "contribution": float(taxable_contrib),
-                         "mean_return": float(taxable_mean), "stdev_return": float(taxable_stdev)},
-            "cash":     {"balance": float(cash_balance)}
-        },
+        "accounts": accounts,
         "income": {
             "salary": float(salary),
             "salary_growth": float(salary_growth_pct) / 100.0
