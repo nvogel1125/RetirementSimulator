@@ -1,4 +1,5 @@
 # app.py
+import io
 import json
 from copy import deepcopy
 import time
@@ -6,6 +7,18 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import (
+    Image,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from retirement_planner.calculators import monte_carlo
 from retirement_planner.components.forms import plan_form, WIDGET_KEYS  # keys for sidebar widgets
@@ -143,10 +156,12 @@ st.session_state.setdefault("plan", {})
 st.session_state.setdefault("form_defaults", {})
 st.session_state.setdefault("scenarios", {})            # name -> plan dict
 st.session_state.setdefault("export_json", None)
+st.session_state.setdefault("export_pdf_bytes", None)
 st.session_state.setdefault("special_editor_rows", [])  # special expenses table
 st.session_state.setdefault("auto_run", False)
 st.session_state.setdefault("run_now", False)
 st.session_state.setdefault("username", None)           # ensure key exists
+st.session_state.setdefault("chart_figs", {})
 
 
 # ====== SIMPLE LOGIN (plaintext users file) ======
@@ -175,6 +190,57 @@ def _logo_path(name: str):
     """Return a Path to a logo image if it exists."""
     path = BASE_DIR / "assets" / f"{name}.png"
     return path if path.exists() else None
+
+
+def _build_pdf(plan: dict, charts: dict) -> bytes:
+    """Create a PDF report showing inputs and charts."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36)
+    styles = getSampleStyleSheet()
+    story = [Paragraph("NVision Retirement Report", styles["Title"]), Spacer(1, 12)]
+
+    # ---- Input data ----
+    story.append(Paragraph("Input Data", styles["Heading2"]))
+
+    rows = [["Field", "Value"]]
+
+    def _flatten(prefix: str, obj):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                key = f"{prefix}{k}" if prefix else k
+                _flatten(f"{key}.", v)
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                key = f"{prefix}{i}"
+                _flatten(f"{key}.", v)
+        else:
+            rows.append([prefix[:-1], str(obj)])
+
+    _flatten("", plan)
+
+    table = Table(rows, hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6ECE9")),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ]
+        )
+    )
+    story.extend([table, Spacer(1, 12)])
+
+    # ---- Charts ----
+    for title, fig in charts.items():
+        story.extend([PageBreak(), Paragraph(title, styles["Heading2"])])
+        img = fig.to_image(format="png", scale=2)
+        story.append(Image(io.BytesIO(img), width=480, height=300))
+        story.append(Spacer(1, 12))
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
 
 
 # ====== LOGIN GATE ======
@@ -362,12 +428,22 @@ st.sidebar.divider()
 st.sidebar.header("Export")
 if st.sidebar.button("Export JSON"):
     st.session_state["export_json"] = json.dumps(plan, indent=2)
+if st.sidebar.button("Export PDF"):
+    charts = st.session_state.get("chart_figs", {})
+    st.session_state["export_pdf_bytes"] = _build_pdf(plan, charts)
 if st.session_state.get("export_json"):
     st.sidebar.download_button(
         "⬇️ Download JSON",
         data=st.session_state["export_json"],
         file_name=f"{scenario_name or 'plan'}.json",
-        mime="application/json"
+        mime="application/json",
+    )
+if st.session_state.get("export_pdf_bytes"):
+    st.sidebar.download_button(
+        "⬇️ Download PDF",
+        data=st.session_state["export_pdf_bytes"],
+        file_name=f"{scenario_name or 'plan'}.pdf",
+        mime="application/pdf",
     )
 
 # ====== RUN SIMULATION ======
@@ -383,15 +459,14 @@ if "results" not in locals():
     st.info("Run a simulation to see results.")
     st.stop()
 
+chart_figs: dict = {}
+
 st.subheader("Plan Summary")
 kcol1, kcol2 = st.columns(2)
 with kcol1:
-    # monte_carlo.simulate returns "success_probability"; older key "success_prob"
-    # triggered a KeyError when accessing the results. Use the correct key.
-    st.plotly_chart(
-        success_gauge(results["success_probability"]),
-        use_container_width=True,
-    )
+    fig_success = success_gauge(results["success_probability"])
+    chart_figs["Success Probability"] = fig_success
+    st.plotly_chart(fig_success, use_container_width=True)
 
 with kcol2:
     st.metric(label="Median terminal net worth", value=f"${results['median_terminal']:,.0f}")
@@ -409,25 +484,23 @@ c1, c2 = st.columns(2)
 with c1:
     st.subheader("Net Worth (Percentile Fan)")
     percentiles = results.get("percentiles", {})
-    st.plotly_chart(
-        fan_chart(
-            results["ages"],
-            percentiles.get("p10", results.get("networth_p10", [])),
-            percentiles.get("p50", results.get("networth_p50", [])),
-            percentiles.get("p90", results.get("networth_p90", [])),
-        ),
-        use_container_width=True,
+    fig_fan = fan_chart(
+        results["ages"],
+        percentiles.get("p10", results.get("networth_p10", [])),
+        percentiles.get("p50", results.get("networth_p50", [])),
+        percentiles.get("p90", results.get("networth_p90", [])),
     )
+    chart_figs["Net Worth (Percentile Fan)"] = fig_fan
+    st.plotly_chart(fig_fan, use_container_width=True)
 
 with c2:
     st.subheader("Account Balances (Median Path)")
-    st.plotly_chart(
-        account_area_chart(
-            results["ages"],
-            results["acct_series_median"],
-        ),
-        use_container_width=True,
+    fig_accounts = account_area_chart(
+        results["ages"],
+        results["acct_series_median"],
     )
+    chart_figs["Account Balances (Median Path)"] = fig_accounts
+    st.plotly_chart(fig_accounts, use_container_width=True)
 
 # --- Cash flow and tax charts (Median Path) ---
 lm = results.get("ledger_median", {})
@@ -435,16 +508,14 @@ ages_cf = lm.get("age", results["ages"])
 cc1, cc2 = st.columns(2)
 with cc1:
     st.subheader("Annual Cash Flow")
-    st.plotly_chart(
-        cash_flow_chart(ages_cf, lm.get("income", []), lm.get("expenses", [])),
-        use_container_width=True,
-    )
+    fig_cash = cash_flow_chart(ages_cf, lm.get("income", []), lm.get("expenses", []))
+    chart_figs["Annual Cash Flow"] = fig_cash
+    st.plotly_chart(fig_cash, use_container_width=True)
 with cc2:
     st.subheader("Annual Federal Taxes")
-    st.plotly_chart(
-        tax_chart(ages_cf, {"ordinary": lm.get("taxes", [])}),
-        use_container_width=True,
-    )
+    fig_tax = tax_chart(ages_cf, {"ordinary": lm.get("taxes", [])})
+    chart_figs["Annual Federal Taxes"] = fig_tax
+    st.plotly_chart(fig_tax, use_container_width=True)
 
 # --- Roth conversions bar chart (Median Path) ---
 if isinstance(lm, dict):
@@ -461,6 +532,7 @@ if isinstance(lm, dict):
             yaxis_title="Dollars",
             margin=dict(l=10, r=10, t=40, b=10),
         )
+        chart_figs["Roth Conversions (Median Path)"] = fig_conv
         st.plotly_chart(fig_conv, use_container_width=True)
 else:
     lm_rows = [r for r in lm if isinstance(r, dict)]
@@ -477,7 +549,10 @@ else:
             yaxis_title="Dollars",
             margin=dict(l=10, r=10, t=40, b=10),
         )
+        chart_figs["Roth Conversions (Median Path)"] = fig_conv
         st.plotly_chart(fig_conv, use_container_width=True)
+
+st.session_state["chart_figs"] = chart_figs
 
 # --- AI insights ---
 st.divider()
