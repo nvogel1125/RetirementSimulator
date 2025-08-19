@@ -392,13 +392,14 @@ with c1:
 with c2:
     scenarios = load_user_scenarios(st.session_state["username"])
     options = [s["name"] for s in scenarios]
-    load_name = st.selectbox("Load saved", [""] + options)
+    load_name = st.selectbox("Load saved", [""] + options, key="load_select")
     if load_name:
         for s in scenarios:
             if s["name"] == load_name:
                 st.session_state["form_defaults"] = deepcopy(s["plan"])
                 st.session_state["plan"] = deepcopy(s["plan"])
                 st.session_state["special_editor_rows"] = s["plan"].get("expenses", {}).get("special", [])
+                st.session_state["load_select"] = ""  # reset selection to prevent rerun loop
                 st.sidebar.success(f"Loaded '{load_name}'")
                 st.rerun()
 
