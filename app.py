@@ -344,6 +344,13 @@ plan = plan_form()
 # --- Sidebar: special expenses editor ---
 st.sidebar.subheader("Special Expenses")
 specials = st.session_state["special_editor_rows"]
+
+# Handle add before rendering so the new row appears immediately
+if st.sidebar.button("➕ Add Expense", key="sp_add"):
+    specials.append({"age": plan["current_age"], "amount": 0.0})
+    st.session_state["special_editor_rows"] = specials
+    st.rerun()
+
 remove_idx = []
 if specials:
     st.sidebar.markdown("**Age** | **Amount**")
@@ -370,10 +377,13 @@ for i, row in enumerate(specials):
     if c3.button("✖", key=f"sp_del_{i}"):
         remove_idx.append(i)
     specials[i] = {"age": int(age), "amount": float(amt)}
-for idx in reversed(remove_idx):
-    specials.pop(idx)
-if st.sidebar.button("➕ Add Expense"):
-    specials.append({"age": plan["current_age"], "amount": 0.0})
+
+if remove_idx:
+    for idx in reversed(remove_idx):
+        specials.pop(idx)
+    st.session_state["special_editor_rows"] = specials
+    st.rerun()
+
 plan["expenses"]["special"] = specials
 
 st.sidebar.divider()
