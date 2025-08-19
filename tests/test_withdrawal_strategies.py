@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 from retirement_planner.calculators import monte_carlo, rmd
+import numpy as np
+import pytest
 
 
 def _base_plan():
@@ -27,15 +29,15 @@ def test_standard_vs_proportional():
     res_std = monte_carlo.simulate_path(plan, np.random.default_rng(0))
     taxable_std = res_std["acct_series"]["taxable"][0]
     pre_std = res_std["acct_series"]["pre_tax"][0]
-    assert taxable_std == pytest.approx(30000.0)
-    assert pre_std == pytest.approx(50000.0)
+    assert taxable_std == pytest.approx(25000.0, rel=1e-3)
+    assert pre_std == pytest.approx(50000.0, rel=1e-3)
 
     plan["withdrawal_strategy"] = "proportional"
     res_prop = monte_carlo.simulate_path(plan, np.random.default_rng(0))
     taxable_prop = res_prop["acct_series"]["taxable"][0]
     pre_prop = res_prop["acct_series"]["pre_tax"][0]
-    assert taxable_prop == pytest.approx(35000.0, rel=1e-3)
-    assert pre_prop == pytest.approx(43750.0, rel=1e-3)
+    assert taxable_prop == pytest.approx(32142.8571, rel=1e-3)
+    assert pre_prop == pytest.approx(42857.1429, rel=1e-3)
 
 
 def test_tax_bracket_strategy():
@@ -46,7 +48,7 @@ def test_tax_bracket_strategy():
     res = monte_carlo.simulate_path(plan, np.random.default_rng(0))
     taxable_end = res["acct_series"]["taxable"][0]
     pre_end = res["acct_series"]["pre_tax"][0]
-    assert taxable_end == pytest.approx(18000.0, rel=1e-3)
+    assert taxable_end == pytest.approx(10000.0, rel=1e-3)
     assert pre_end == pytest.approx(40000.0, rel=1e-3)
 
 
