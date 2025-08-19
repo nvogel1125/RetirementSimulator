@@ -26,3 +26,9 @@ def test_survivor_benefit():
     # The survivor should receive 1500*12
     survivor = ss.social_security_benefit(PIA=1500, start_age=67, spouse_PIA=1000, spouse_start_age=67, survivor=True)
     assert math.isclose(survivor, 1500 * 12, rel_tol=1e-4)
+
+
+def test_estimate_pia_constant_salary():
+    """Estimating PIA from a flat salary reproduces the formula."""
+    pia = ss.estimate_pia(current_age=30, retire_age=67, salary=60000, salary_growth=0.0)
+    assert math.isclose(pia, 2280.92, rel_tol=1e-4)

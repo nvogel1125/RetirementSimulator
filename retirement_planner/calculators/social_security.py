@@ -94,4 +94,55 @@ def social_security_benefit(
     return (primary_monthly + spouse_monthly) * 12
 
 
-__all__ = ["social_security_benefit"]
+def estimate_pia(
+    current_age: int,
+    retire_age: int,
+    salary: float,
+    salary_growth: float,
+) -> float:
+    """Roughly estimate the monthly PIA from projected earnings.
+
+    The calculation assumes earnings from age 22 until the year before
+    ``retire_age``.  Salaries grow at ``salary_growth`` each year and the
+    highest 35 years of earnings are averaged to compute AIME.  The 2024 bend
+    points are applied to convert AIME to a monthly PIA.  This is a
+    simplification and ignores wage indexing, inflation adjustments and other
+    nuances of the real Social Security formula.
+    """
+    start_age = 22
+    if retire_age <= start_age or salary <= 0:
+        return 0.0
+
+    # Build an earnings history from start_age until retirement
+    earnings = []
+
+    # Earnings prior to the current age
+    past_salary = salary
+    for _age in range(current_age - 1, start_age - 1, -1):
+        past_salary /= (1 + salary_growth)
+        earnings.append(past_salary)
+    earnings.reverse()  # chronological order
+
+    # Current age and future earnings until retirement
+    earnings.append(salary)
+    future_salary = salary
+    for _age in range(current_age + 1, retire_age):
+        future_salary *= (1 + salary_growth)
+        earnings.append(future_salary)
+
+    top_earnings = sorted(earnings, reverse=True)[:35]
+    if len(top_earnings) < 35:
+        top_earnings += [0.0] * (35 - len(top_earnings))
+    aime = sum(top_earnings) / (35 * 12)
+
+    bend1, bend2 = 1174, 7078  # 2024 bend points
+    if aime <= bend1:
+        pia = 0.9 * aime
+    elif aime <= bend2:
+        pia = 0.9 * bend1 + 0.32 * (aime - bend1)
+    else:
+        pia = 0.9 * bend1 + 0.32 * (bend2 - bend1) + 0.15 * (aime - bend2)
+    return pia
+
+
+__all__ = ["social_security_benefit", "estimate_pia"]
