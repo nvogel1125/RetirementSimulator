@@ -1,4 +1,5 @@
 import streamlit as st
+from retirement_planner.calculators.social_security import estimate_pia
 
 # Stable widget keys so we can programmatically set values on load
 WIDGET_KEYS = {
@@ -186,10 +187,14 @@ def plan_form():
 
     # -------- Social Security --------
     st.sidebar.header("Social Security")
+    estimated_pia = estimate_pia(current_age, retire_age, salary, salary_growth_pct / 100.0)
     ss_pia = st.sidebar.number_input(
         "PIA (monthly at FRA)", min_value=0.0,
-        value=_d("ss_pia", 0.0), key=WIDGET_KEYS["ss_pia"],
+        value=_d("ss_pia", estimated_pia), key=WIDGET_KEYS["ss_pia"],
         help="Primary Insurance Amount — benefit at full retirement age (67).",
+    )
+    st.sidebar.caption(
+        "PIA estimated from projected earnings; override if you have an official SSA statement."
     )
     ss_claim_age = st.sidebar.number_input(
         "Claiming age", min_value=62, max_value=70,
