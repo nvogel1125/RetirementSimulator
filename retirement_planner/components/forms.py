@@ -1,5 +1,5 @@
 import streamlit as st
-from retirement_planner.calculators.social_security import estimate_pia
+from retirement_planner.calculators.social_security import estimate_pia, social_security_benefit
 
 # Stable widget keys so we can programmatically set values on load
 WIDGET_KEYS = {
@@ -200,6 +200,12 @@ def plan_form():
         "Claiming age", min_value=62, max_value=70,
         value=_d("ss_claim_age", 67), key=WIDGET_KEYS["ss_claim_age"],
         help="Earliest claim is 62; waiting until 70 increases the benefit.",
+    )
+    ss_estimated = social_security_benefit(PIA=ss_pia, start_age=int(ss_claim_age))
+    st.sidebar.number_input(
+        "Annual benefit at claiming age",
+        value=float(ss_estimated),
+        disabled=True,
     )
 
     # -------- Roth Conversion --------

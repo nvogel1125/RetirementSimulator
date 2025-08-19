@@ -3,6 +3,7 @@
 from retirement_planner.calculators import monte_carlo
 import numpy as np
 from retirement_planner.components import charts
+import pytest
 
 
 def _base_plan():
@@ -88,18 +89,18 @@ def test_max_out_roth_with_growing_limit():
 def test_deficit_draws_from_taxable_then_pretax_with_tax():
     plan = _base_plan()
     plan["income"]["salary"] = 20000.0
-    plan["accounts"]["taxable"]["balance"] = 7000.0
+    plan["accounts"]["taxable"]["balance"] = 10000.0
     plan["accounts"]["pre_tax"]["balance"] = 5000.0
     plan["accounts"]["pre_tax"]["contribution"] = 0.0
     plan["accounts"]["roth"]["contribution"] = 0.0
     plan["accounts"]["taxable"]["contribution"] = 0.0
     res = monte_carlo.simulate_path(plan, np.random.default_rng(0))
     ledger = res["ledger"]
-    # Withdrawals: 7000 taxable + 4000 gross from pre_tax (1000 tax)
-    assert ledger["withdrawals"][0] == 11000.0
-    assert ledger["taxes"][0] == 1000.0
+    # Withdrawals include tax on taxable and pre-tax accounts
+    assert ledger["withdrawals"][0] == pytest.approx(13333.3333, rel=1e-3)
+    assert ledger["taxes"][0] == pytest.approx(3333.3333, rel=1e-3)
     accts = res["acct_series"]
-    assert accts["pre_tax"][0] == 1000.0
+    assert accts["pre_tax"][0] == pytest.approx(1666.6667, rel=1e-3)
     assert accts["taxable"][0] == 0.0
 
 

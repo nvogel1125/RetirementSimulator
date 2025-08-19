@@ -3,6 +3,8 @@
 import math
 
 from retirement_planner.calculators import social_security as ss
+from retirement_planner.calculators import monte_carlo
+import numpy as np
 
 
 def test_early_claiming_reduction():
@@ -32,3 +34,24 @@ def test_estimate_pia_constant_salary():
     """Estimating PIA from a flat salary reproduces the formula."""
     pia = ss.estimate_pia(current_age=30, retire_age=67, salary=60000, salary_growth=0.0)
     assert math.isclose(pia, 2280.92, rel_tol=1e-4)
+
+
+def test_benefit_flow_in_monte_carlo():
+    plan = {
+        'current_age':60,
+        'retire_age':65,
+        'end_age':66,
+        'accounts': {
+            'pre_tax': {'balance':0.0,'contribution':0.0,'mean_return':0.0,'stdev_return':0.0,'withdrawal_tax_rate':0.0},
+            'roth': {'balance':0.0,'contribution':0.0,'mean_return':0.0,'stdev_return':0.0},
+            'taxable': {'balance':0.0,'contribution':0.0,'mean_return':0.0,'stdev_return':0.0},
+            'cash': {'balance':0.0}
+        },
+        'income': {'salary':0.0,'salary_growth':0.0},
+        'expenses': {'baseline':0.0},
+        'social_security': {'PIA':2000.0,'claim_age':62}
+    }
+    res = monte_carlo.simulate_path(plan, np.random.default_rng(0))
+    idx = res['ages'].index(62)
+    expected = ss.social_security_benefit(PIA=2000.0, start_age=62)
+    assert res['ledger']['income'][idx] == expected
