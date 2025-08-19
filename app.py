@@ -399,7 +399,7 @@ with c2:
                 st.session_state["form_defaults"] = deepcopy(s["plan"])
                 st.session_state["plan"] = deepcopy(s["plan"])
                 st.session_state["special_editor_rows"] = s["plan"].get("expenses", {}).get("special", [])
-                st.session_state["load_select"] = ""  # reset selection to prevent rerun loop
+                st.session_state.pop("load_select", None)  # reset selection to prevent rerun loop
                 st.sidebar.success(f"Loaded '{load_name}'")
                 st.rerun()
 
