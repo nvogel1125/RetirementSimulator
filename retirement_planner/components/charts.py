@@ -78,34 +78,35 @@ def account_area_chart(ages, series_dict, title="Account Balances (Median Path)"
     return fig
 
 
-# ---------- Cash flow line chart ----------
+# ---------- Cash flow bar chart ----------
 def cash_flow_chart(
     ages: Sequence[int],
     income: Sequence[float],
     expenses: Sequence[float],
     title: str = "Income vs Expenses",
 ) -> go.Figure:
-    """Line chart comparing annual income and expenses."""
+    """Bar chart showing income (green) above and expenses (red) below zero."""
     n = len(ages)
     inc = _fit(income, n)
     exp = _fit(expenses, n)
     fig = go.Figure()
     fig.add_trace(
-        go.Scatter(
+        go.Bar(
             x=ages,
             y=inc,
-            mode="lines",
             name="Income",
+            marker_color="#22c55e",
             hovertemplate="Age %{x}<br>$%{y:,.0f}<extra></extra>",
         )
     )
     fig.add_trace(
-        go.Scatter(
+        go.Bar(
             x=ages,
-            y=exp,
-            mode="lines",
+            y=[-e for e in exp],
             name="Expenses",
-            hovertemplate="Age %{x}<br>$%{y:,.0f}<extra></extra>",
+            marker_color="#ef4444",
+            customdata=exp,
+            hovertemplate="Age %{x}<br>$%{customdata:,.0f}<extra></extra>",
         )
     )
     fig.update_layout(
@@ -115,6 +116,7 @@ def cash_flow_chart(
         margin=dict(l=10, r=10, t=40, b=10),
         xaxis_title="Age",
         yaxis_title="Dollars (nominal)",
+        barmode="relative",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig

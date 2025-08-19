@@ -33,9 +33,10 @@ from retirement_planner.components.insights import generate_insights
 
 
 # ---------- Page config ----------
+ICON_PATH = Path(__file__).resolve().parent / "assets" / "light_logo.png"
 st.set_page_config(
     page_title="NVision Retirement Simulator",
-    page_icon="📈",
+    page_icon=str(ICON_PATH),
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -168,6 +169,7 @@ st.session_state.setdefault("chart_figs", {})
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "retirement_planner" / "data"
 USERS_PATH = DATA_DIR / "users.json"
+DISCOUNT_RATE = 0.03  # annual discount rate for present value
 
 def _read_users():
     try:
@@ -480,8 +482,20 @@ with kcol1:
     st.plotly_chart(fig_success, use_container_width=True)
 
 with kcol2:
-    st.metric(label="Median terminal net worth", value=f"${results['median_terminal']:,.0f}")
-    st.caption("Median of ending net worth across all Monte Carlo paths.")
+    col_fv, col_pv = st.columns(2)
+    col_fv.metric(
+        label="Median terminal net worth",
+        value=f"${results['median_terminal']:,.0f}"
+    )
+    years = plan["end_age"] - plan["current_age"]
+    npv_terminal = results["median_terminal"] / ((1 + DISCOUNT_RATE) ** years)
+    col_pv.metric(
+        label="Present value",
+        value=f"${npv_terminal:,.0f}"
+    )
+    st.caption(
+        f"Median of ending net worth across all Monte Carlo paths. Present value discounted at {DISCOUNT_RATE*100:.1f}% per year."
+    )
 
 with kcol2:
     st.metric(label="Simulation size", value=f"{n_paths:,} paths")
