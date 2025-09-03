@@ -38,7 +38,7 @@ st.set_page_config(
     page_title="NVision Retirement Simulator",
     page_icon=str(ICON_PATH),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 # Hide Streamlit's default menu and footer
@@ -144,8 +144,21 @@ div[data-testid="stDataFrame"] {
 }
 
 /* Smooth transitions for interactivity */
-.stNumberInput, .stTextInput, .stSelectbox, .stSlider { 
-    transition: all 0.2s ease; 
+.stNumberInput, .stTextInput, .stSelectbox, .stSlider {
+    transition: all 0.2s ease;
+}
+
+/* Mobile tweaks */
+@media (max-width: 600px) {
+    .block-container {
+        padding: 1rem;
+    }
+    section[data-testid="stSidebar"] {
+        width: 100%;
+    }
+    div.stPlotlyChart {
+        padding: 0.5rem 0;
+    }
 }
 </style>
 """,
