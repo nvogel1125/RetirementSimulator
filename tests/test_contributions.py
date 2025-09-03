@@ -45,6 +45,11 @@ def test_contributions_capped_by_income():
     assert accts["pre_tax"][0] == 20000.0
     assert accts["roth"][0] == 0.0
     assert accts["taxable"][0] == 0.0
+    ledger = res["ledger"]
+    assert ledger["contrib_pre_tax"][0] == 20000.0
+    assert ledger["contrib_roth"][0] == 0.0
+    assert ledger["contrib_taxable"][0] == 0.0
+    assert ledger["contrib_cash"][0] == 0.0
 
 
 def test_partial_contribution_when_insufficient_income():
@@ -54,6 +59,9 @@ def test_partial_contribution_when_insufficient_income():
     accts = res["acct_series"]
     assert accts["pre_tax"][0] == 10000.0
     assert accts["roth"][0] == 0.0
+    ledger = res["ledger"]
+    assert ledger["contrib_pre_tax"][0] == 10000.0
+    assert ledger["contrib_roth"][0] == 0.0
 
 
 def test_roth_income_limit_blocks_contribution():
@@ -67,6 +75,11 @@ def test_roth_income_limit_blocks_contribution():
     assert accts["roth"][0] == 0.0
     assert accts["taxable"][0] == 5000.0
     assert res["ledger"]["cash"][0] == 5000.0
+    ledger = res["ledger"]
+    assert ledger["contrib_pre_tax"][0] == 20000.0
+    assert ledger["contrib_roth"][0] == 0.0
+    assert ledger["contrib_taxable"][0] == 5000.0
+    assert ledger["contrib_cash"][0] == 5000.0
 
 
 def test_max_out_roth_with_growing_limit():

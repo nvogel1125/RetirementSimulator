@@ -89,6 +89,7 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
     ledger = {
         "age": [], "income": [], "expenses": [], "withdrawals": [], "taxes": [],
         "tax_ordinary": [], "tax_cap_gains": [], "tax_state": [],
+        "contrib_pre_tax": [], "contrib_roth": [], "contrib_taxable": [], "contrib_cash": [],
         "roth_conversion": [], "conversion_tax": [],
         "pre_tax": [], "roth": [], "taxable": [], "cash": [], "net_worth": []
     }
@@ -108,24 +109,28 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
         year_withdrawals = 0.0
         withdraw_tax = 0.0
         available = year_income - year_expenses
+        contrib_pre = contrib_roth = contrib_taxable = contrib_cash = 0.0
 
         if age < retire_age and available > 0:
             want = _contribution_for_age(pre_tax_401k, age)
             cap = want if pre_tax_401k.get('contribution_schedule') else 23000.0
             contrib = min(available, want, cap)
             pre_tax_401k['balance'] += contrib
+            contrib_pre += contrib
             available -= contrib
 
             want = _contribution_for_age(roth_401k, age)
             cap = want if roth_401k.get('contribution_schedule') else 23000.0
             contrib = min(available, want, cap)
             roth_401k['balance'] += contrib
+            contrib_roth += contrib
             available -= contrib
 
             want = _contribution_for_age(pre_tax_ira, age)
             cap = want if pre_tax_ira.get('contribution_schedule') else 7000.0
             contrib = min(available, want, cap)
             pre_tax_ira['balance'] += contrib
+            contrib_pre += contrib
             available -= contrib
 
             want = _contribution_for_age(roth_ira, age)
@@ -133,11 +138,13 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
                 cap = want if roth_ira.get('contribution_schedule') else 7000.0
                 contrib = min(available, want, cap)
                 roth_ira['balance'] += contrib
+                contrib_roth += contrib
                 available -= contrib
 
             want = _contribution_for_age(taxable, age)
             contrib = min(available, want)
             taxable['balance'] += contrib
+            contrib_taxable += contrib
             available -= contrib
 
         income_tax = year_income * income_tax_rate
@@ -172,6 +179,7 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
                 year_withdrawals += take
 
         if available > 0:
+            contrib_cash = available
             cash['balance'] = cash.get('balance', 0.0) + available
             available = 0.0
 
@@ -291,7 +299,15 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
         ledger["income"].append(year_income)
         ledger["expenses"].append(year_expenses)
         ledger["withdrawals"].append(year_withdrawals)
-        ledger["taxes"].append(income_tax + conv_tax + withdraw_tax)
+        total_tax = income_tax + conv_tax + withdraw_tax
+        ledger["taxes"].append(total_tax)
+        ledger["tax_ordinary"].append(total_tax)
+        ledger["tax_cap_gains"].append(0.0)
+        ledger["tax_state"].append(0.0)
+        ledger["contrib_pre_tax"].append(contrib_pre)
+        ledger["contrib_roth"].append(contrib_roth)
+        ledger["contrib_taxable"].append(contrib_taxable)
+        ledger["contrib_cash"].append(contrib_cash)
         ledger["roth_conversion"].append(gross_conv)
         ledger["conversion_tax"].append(conv_tax)
         ledger["pre_tax"].append(total_pre)
@@ -469,6 +485,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
     ledger = {
         "age": [], "income": [], "expenses": [], "withdrawals": [], "taxes": [],
         "tax_ordinary": [], "tax_cap_gains": [], "tax_state": [],
+        "contrib_pre_tax": [], "contrib_roth": [], "contrib_taxable": [], "contrib_cash": [],
         "roth_conversion": [], "conversion_tax": [],
         "pre_tax": [], "roth": [], "taxable": [], "cash": [], "net_worth": []
     }
@@ -499,7 +516,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         state_tax_paid = 0.0
         available = year_income - year_expenses
 
-        pending_pre = pending_roth = pending_taxable = 0.0
+        pending_pre = pending_roth = pending_taxable = pending_cash = 0.0
         if age < retire_age and available > 0:
             want = _contribution_for_age(pre_tax, age)
             contrib = min(available, want)
@@ -573,6 +590,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
             _cover_need(-available)
 
         if available > 0:
+            pending_cash = available
             cash["balance"] = cash.get("balance", 0.0) + available
             available = 0.0
 
@@ -736,6 +754,10 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         ledger["tax_ordinary"].append(ordinary_tax)
         ledger["tax_cap_gains"].append(cg_tax_paid)
         ledger["tax_state"].append(state_tax_paid)
+        ledger["contrib_pre_tax"].append(pending_pre)
+        ledger["contrib_roth"].append(pending_roth)
+        ledger["contrib_taxable"].append(pending_taxable)
+        ledger["contrib_cash"].append(pending_cash)
         ledger["roth_conversion"].append(gross_conv)     # visibility
         ledger["conversion_tax"].append(conv_tax)
         ledger["pre_tax"].append(pre_tax.get("balance", 0.0))

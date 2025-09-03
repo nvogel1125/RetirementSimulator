@@ -670,7 +670,9 @@ else:
             lm_rows.append({"row": s})
     df = pd.DataFrame(lm_rows)
 
-st.dataframe(df, use_container_width=True, height=350)
+# Highlight the net worth column for easier visibility
+styled_df = df.style.set_properties(subset=["net_worth"], **{"background-color": "#FFF3CD", "font-weight": "bold"})
+st.dataframe(styled_df, use_container_width=True, height=350)
 st.download_button(
     "⬇️ CSV (median ledger)",
     data=df.to_csv(index=False).encode("utf-8"),
