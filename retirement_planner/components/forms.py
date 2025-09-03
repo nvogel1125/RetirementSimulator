@@ -9,6 +9,7 @@ WIDGET_KEYS = {
     "end_age": "in_end_age",
     "state": "in_state",
     "filing": "in_filing",
+    "pre_tax_tax_rate": "in_pre_tax_tax_rate",
 
     # Traditional / pre-tax accounts
     "pre_tax_401k_balance": "in_pre_tax_401k_balance",
@@ -81,9 +82,31 @@ def plan_form():
         "State (2-letter)", value=_d("state","MI"),
         key=WIDGET_KEYS["state"], help="Used for (very simplified) state tax."
     )
+
+    filing_options = [
+        ("single", "Single"),
+        ("married_joint", "Married filing jointly"),
+        ("married_separate", "Married filing separately"),
+        ("head_of_household", "Head of household"),
+    ]
+    filing_default = _d("filing_status", "single")
     filing = st.sidebar.selectbox(
-        "Filing status", ["single"], index=0, key=WIDGET_KEYS["filing"],
-        help="Simplified for demo."
+        "Filing status",
+        [opt[0] for opt in filing_options],
+        index=[opt[0] for opt in filing_options].index(filing_default) if filing_default in [opt[0] for opt in filing_options] else 0,
+        format_func=lambda x: dict(filing_options)[x],
+        key=WIDGET_KEYS["filing"],
+        help="Used for tax calculations.",
+    )
+
+    pre_tax_tax_rate = st.sidebar.number_input(
+        "Effective tax rate (0-1)",
+        min_value=0.0,
+        max_value=1.0,
+        step=0.01,
+        value=_d("pre_tax_tax_rate", 0.22),
+        key=WIDGET_KEYS["pre_tax_tax_rate"],
+        help="Applied to salary and pre-tax withdrawals.",
     )
 
     # -------- Accounts --------
@@ -317,6 +340,7 @@ def plan_form():
             "contribution": float(taxable_contrib),
             "mean_return": float(taxable_mean),
             "stdev_return": 0.12,
+            "withdrawal_tax_rate": float(pre_tax_tax_rate),
         },
         "cash": {"balance": float(cash_balance)},
     }
@@ -341,6 +365,7 @@ def plan_form():
         "contribution": pre_con,
         "mean_return": pre_mean,
         "stdev_return": pre_stdev,
+        "withdrawal_tax_rate": float(pre_tax_tax_rate),
     }
     accounts["roth"] = {
         "balance": roth_bal,
@@ -359,7 +384,8 @@ def plan_form():
         "accounts": accounts,
         "income": {
             "salary": float(salary),
-            "salary_growth": float(salary_growth_pct) / 100.0
+            "salary_growth": float(salary_growth_pct) / 100.0,
+            "tax_rate": float(pre_tax_tax_rate),
         },
         "expenses": {
             "baseline": float(baseline_expenses),

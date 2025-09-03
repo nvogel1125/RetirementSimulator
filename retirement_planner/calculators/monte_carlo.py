@@ -44,6 +44,7 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
 
     salary = float(plan.get("income", {}).get("salary", 0.0))
     salary_growth = float(plan.get("income", {}).get("salary_growth", 0.0))
+    income_tax_rate = float(plan.get("income", {}).get("tax_rate", 0.0))
 
     baseline = float(plan.get("expenses", {}).get("baseline", 0.0))
     special_list = plan.get("expenses", {}).get("special", [])
@@ -138,9 +139,8 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
             taxable['balance'] += contrib
             available -= contrib
 
-            if available > 0:
-                cash['balance'] = cash.get('balance', 0.0) + available
-                available = 0.0
+        income_tax = year_income * income_tax_rate
+        available -= income_tax
 
         if available < 0:
             need = -available
@@ -169,6 +169,10 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
                 _take_from_roth(take)
                 need -= take
                 year_withdrawals += take
+
+        if available > 0:
+            cash['balance'] = cash.get('balance', 0.0) + available
+            available = 0.0
 
         if correlate:
             rdraw = _draw_return(0.06, 0.12, rng)
@@ -286,7 +290,7 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
         ledger["income"].append(year_income)
         ledger["expenses"].append(year_expenses)
         ledger["withdrawals"].append(year_withdrawals)
-        ledger["taxes"].append(conv_tax + withdraw_tax)
+        ledger["taxes"].append(income_tax + conv_tax + withdraw_tax)
         ledger["roth_conversion"].append(gross_conv)
         ledger["conversion_tax"].append(conv_tax)
         ledger["pre_tax"].append(total_pre)
@@ -373,6 +377,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
     # Income & salary growth
     salary = float(plan.get("income", {}).get("salary", 0.0))
     salary_growth = float(plan.get("income", {}).get("salary_growth", 0.0))
+    income_tax_rate = float(plan.get("income", {}).get("tax_rate", 0.0))
 
     # Expenses
     baseline = float(plan.get("expenses", {}).get("baseline", 0.0))
@@ -455,11 +460,10 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
             pending_taxable = contrib
             available -= contrib
 
-            if available > 0:
-                cash["balance"] = cash.get("balance", 0.0) + available
-                available = 0.0
+        income_tax = year_income * income_tax_rate
+        available -= income_tax
 
-        # If expenses exceed income, draw from accounts
+        # If expenses exceed income or taxes, draw from accounts
         if available < 0:
             need = -available
             # cash first
@@ -494,6 +498,10 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
                 roth["balance"] -= take
                 need -= take
                 year_withdrawals += take
+
+        if available > 0:
+            cash["balance"] = cash.get("balance", 0.0) + available
+            available = 0.0
 
         # update Roth limit for "max out" option
         if roth_max_out:
@@ -641,7 +649,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         ledger["income"].append(year_income)
         ledger["expenses"].append(year_expenses)
         ledger["withdrawals"].append(year_withdrawals)
-        ledger["taxes"].append(conv_tax + withdraw_tax)
+        ledger["taxes"].append(income_tax + conv_tax + withdraw_tax)
         ledger["roth_conversion"].append(gross_conv)     # visibility
         ledger["conversion_tax"].append(conv_tax)
         ledger["pre_tax"].append(pre_tax.get("balance", 0.0))
