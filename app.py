@@ -352,6 +352,56 @@ def load_user_scenarios(username: str) -> list:
         return json.load(f)
 
 
+def _plan_to_form_defaults(plan: dict) -> dict:
+    """Flatten a plan dict into the keys expected by the sidebar form."""
+    acc = plan.get("accounts", {})
+    income = plan.get("income", {})
+    expenses = plan.get("expenses", {})
+    ss = plan.get("social_security", {})
+    rc = plan.get("roth_conversion", {})
+    assumptions = plan.get("assumptions", {})
+    sim = plan.get("_sim", {})
+
+    defaults = {
+        "current_age": plan.get("current_age"),
+        "retire_age": plan.get("retire_age"),
+        "end_age": plan.get("end_age"),
+        "state": plan.get("state"),
+        "filing_status": plan.get("filing_status"),
+        "pre_tax_tax_rate": acc.get("pre_tax", {}).get("withdrawal_tax_rate"),
+        "pre_tax_401k_balance": acc.get("pre_tax_401k", {}).get("balance", 0.0),
+        "pre_tax_401k_contrib": acc.get("pre_tax_401k", {}).get("contribution", 0.0),
+        "pre_tax_401k_mean": acc.get("pre_tax_401k", {}).get("mean_return", 0.0),
+        "pre_tax_ira_balance": acc.get("pre_tax_ira", {}).get("balance", 0.0),
+        "pre_tax_ira_contrib": acc.get("pre_tax_ira", {}).get("contribution", 0.0),
+        "pre_tax_ira_mean": acc.get("pre_tax_ira", {}).get("mean_return", 0.0),
+        "roth_401k_balance": acc.get("roth_401k", {}).get("balance", 0.0),
+        "roth_401k_contrib": acc.get("roth_401k", {}).get("contribution", 0.0),
+        "roth_401k_mean": acc.get("roth_401k", {}).get("mean_return", 0.0),
+        "roth_ira_balance": acc.get("roth_ira", {}).get("balance", 0.0),
+        "roth_ira_contrib": acc.get("roth_ira", {}).get("contribution", 0.0),
+        "roth_ira_mean": acc.get("roth_ira", {}).get("mean_return", 0.0),
+        "taxable_balance": acc.get("taxable", {}).get("balance", 0.0),
+        "taxable_contrib": acc.get("taxable", {}).get("contribution", 0.0),
+        "taxable_mean": acc.get("taxable", {}).get("mean_return", 0.0),
+        "cash_balance": acc.get("cash", {}).get("balance", 0.0),
+        "salary": income.get("salary", 0.0),
+        "salary_growth": income.get("salary_growth", 0.0) * 100.0,
+        "baseline_expenses": expenses.get("baseline", 0.0),
+        "ss_pia": ss.get("PIA", 0.0),
+        "ss_claim_age": ss.get("claim_age"),
+        "rc_cap": rc.get("annual_cap", 0.0),
+        "rc_start_age": rc.get("start_age"),
+        "rc_end_age": rc.get("end_age"),
+        "rc_tax_rate": rc.get("tax_rate", 0.0),
+        "rc_pay_from_taxable": rc.get("pay_tax_from_taxable", True),
+        "returns_correlated": assumptions.get("returns_correlated", True),
+        "n_paths": sim.get("n_paths", 1000),
+        "withdrawal_strategy": plan.get("withdrawal_strategy"),
+    }
+    return defaults
+
+
 # ====== SIDEBAR: FORM + CONTROLS ======
 st.sidebar.header("Retirement Plan Inputs")
 plan = plan_form()
@@ -421,7 +471,7 @@ with c2:
     if load_name:
         for s in scenarios:
             if s["name"] == load_name:
-                st.session_state["form_defaults"] = deepcopy(s["plan"])
+                st.session_state["form_defaults"] = _plan_to_form_defaults(s["plan"])
                 st.session_state["plan"] = deepcopy(s["plan"])
                 st.session_state["special_editor_rows"] = s["plan"].get("expenses", {}).get("special", [])
                 st.session_state.pop("load_select", None)  # reset selection to prevent rerun loop
@@ -432,7 +482,7 @@ uploaded = st.sidebar.file_uploader("Upload plan JSON", type="json")
 if uploaded:
     try:
         data = json.load(uploaded)
-        st.session_state["form_defaults"] = deepcopy(data)
+        st.session_state["form_defaults"] = _plan_to_form_defaults(data)
         st.session_state["plan"] = deepcopy(data)
         st.session_state["special_editor_rows"] = data.get("expenses", {}).get("special", [])
         st.sidebar.success("Plan loaded from file.")
@@ -550,9 +600,14 @@ with cc1:
     chart_figs["Annual Cash Flow"] = fig_cash
     st.plotly_chart(fig_cash, use_container_width=True)
 with cc2:
-    st.subheader("Annual Federal Taxes")
-    fig_tax = tax_chart(ages_cf, {"ordinary": lm.get("taxes", [])})
-    chart_figs["Annual Federal Taxes"] = fig_tax
+    st.subheader("Annual Taxes")
+    taxes_dict = {
+        "ordinary": lm.get("tax_ordinary", lm.get("taxes", [])),
+        "cap_gains": lm.get("tax_cap_gains", []),
+        "state": lm.get("tax_state", []),
+    }
+    fig_tax = tax_chart(ages_cf, taxes_dict)
+    chart_figs["Annual Taxes"] = fig_tax
     st.plotly_chart(fig_tax, use_container_width=True)
 
 # --- Roth conversions bar chart (Median Path) ---
