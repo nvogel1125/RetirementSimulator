@@ -1,6 +1,24 @@
 # calculators/roth.py
 from typing import Dict
 
+
+def roth_ira_max_schedule(start_age: int, retire_age: int, base_limit: float = 7000.0, inflation: float = 0.03) -> Dict[int, float]:
+    """Return a schedule of Roth IRA contribution limits by age.
+
+    The base limit grows with ``inflation`` each year and is rounded to the nearest
+    $500.  Beginning at age 50 an additional $1,000 catch-up contribution is added.
+    Contributions stop at ``retire_age`` (exclusive).
+    """
+    schedule: Dict[int, float] = {}
+    for i, age in enumerate(range(start_age, retire_age)):
+        limit = base_limit * ((1 + inflation) ** i)
+        limit = round(limit / 500.0) * 500.0
+        if age >= 50:
+            limit += 1000.0
+        schedule[age] = limit
+    return schedule
+
+
 def decide_conversion(prior_pre_tax_balance: float, age: int, rc: Dict) -> float:
     """
     Return the gross amount to convert this year based on a simple cap.
