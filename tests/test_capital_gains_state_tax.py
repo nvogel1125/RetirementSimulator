@@ -26,6 +26,9 @@ def test_capital_gains_and_state_tax_applied():
 
     # Expected taxes: capital gains tax on $50k gain (446.25) + MI state tax (~2017.85)
     assert ledger["taxes"][0] == pytest.approx(2464.1, rel=1e-3)
+    assert ledger["tax_cap_gains"][0] == pytest.approx(446.25, rel=1e-3)
+    assert ledger["tax_state"][0] == pytest.approx(2017.85, rel=1e-3)
+    assert ledger["tax_ordinary"][0] == pytest.approx(0.0, rel=1e-3)
     # Remaining taxable balance after covering expenses and taxes
     assert ledger["taxable"][0] == pytest.approx(47535.9, rel=1e-3)
 

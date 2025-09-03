@@ -88,6 +88,7 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
     net_worth: List[float] = []
     ledger = {
         "age": [], "income": [], "expenses": [], "withdrawals": [], "taxes": [],
+        "tax_ordinary": [], "tax_cap_gains": [], "tax_state": [],
         "roth_conversion": [], "conversion_tax": [],
         "pre_tax": [], "roth": [], "taxable": [], "cash": [], "net_worth": []
     }
@@ -353,8 +354,58 @@ def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
 
 def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
     acc = plan.get("accounts", {})
-    if any(k in acc for k in ["pre_tax_401k", "pre_tax_ira", "roth_401k", "roth_ira"]):
-        return _simulate_path_split(plan, rng)
+
+    # Aggregate split account types if needed
+    if ("pre_tax" not in acc) and ("pre_tax_401k" in acc or "pre_tax_ira" in acc):
+        pt401k = acc.get("pre_tax_401k", {})
+        ptira = acc.get("pre_tax_ira", {})
+        def _wavg(vals, weights):
+            total = sum(weights)
+            return sum(v * w for v, w in zip(vals, weights)) / total if total else 0.0
+        bal = pt401k.get("balance", 0.0) + ptira.get("balance", 0.0)
+        contrib = pt401k.get("contribution", 0.0) + ptira.get("contribution", 0.0)
+        weights = [pt401k.get("balance", 0.0), ptira.get("balance", 0.0)]
+        mean = _wavg([
+            pt401k.get("mean_return", 0.0),
+            ptira.get("mean_return", 0.0),
+        ], weights)
+        stdev = _wavg([
+            pt401k.get("stdev_return", 0.0),
+            ptira.get("stdev_return", 0.0),
+        ], weights)
+        acc["pre_tax"] = {
+            "balance": bal,
+            "contribution": contrib,
+            "mean_return": mean,
+            "stdev_return": stdev,
+            "withdrawal_tax_rate": acc.get("pre_tax", {}).get("withdrawal_tax_rate", 0.0),
+        }
+    if ("roth" not in acc) and ("roth_401k" in acc or "roth_ira" in acc):
+        r401k = acc.get("roth_401k", {})
+        rira = acc.get("roth_ira", {})
+        def _wavg(vals, weights):
+            total = sum(weights)
+            return sum(v * w for v, w in zip(vals, weights)) / total if total else 0.0
+        bal = r401k.get("balance", 0.0) + rira.get("balance", 0.0)
+        contrib = r401k.get("contribution", 0.0) + rira.get("contribution", 0.0)
+        weights = [r401k.get("balance", 0.0), rira.get("balance", 0.0)]
+        mean = _wavg([
+            r401k.get("mean_return", 0.0),
+            rira.get("mean_return", 0.0),
+        ], weights)
+        stdev = _wavg([
+            r401k.get("stdev_return", 0.0),
+            rira.get("stdev_return", 0.0),
+        ], weights)
+        roth_acc = {
+            "balance": bal,
+            "contribution": contrib,
+            "mean_return": mean,
+            "stdev_return": stdev,
+        }
+        if rira.get("contribution_schedule"):
+            roth_acc["contribution_schedule"] = rira.get("contribution_schedule")
+        acc["roth"] = roth_acc
 
     curr = int(plan["current_age"])
     end = int(plan["end_age"])
@@ -417,6 +468,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
 
     ledger = {
         "age": [], "income": [], "expenses": [], "withdrawals": [], "taxes": [],
+        "tax_ordinary": [], "tax_cap_gains": [], "tax_state": [],
         "roth_conversion": [], "conversion_tax": [],
         "pre_tax": [], "roth": [], "taxable": [], "cash": [], "net_worth": []
     }
@@ -443,16 +495,18 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         year_withdrawals = 0.0
         withdraw_tax = 0.0
         realized_gains = 0.0
+        cg_tax_paid = 0.0
+        state_tax_paid = 0.0
         available = year_income - year_expenses
 
         pending_pre = pending_roth = pending_taxable = 0.0
         if age < retire_age and available > 0:
-            want = float(pre_tax.get("contribution", 0.0))
+            want = _contribution_for_age(pre_tax, age)
             contrib = min(available, want)
             pending_pre = contrib
             available -= contrib
 
-            roth_contrib_cap = float(roth.get("contribution", 0.0))
+            roth_contrib_cap = _contribution_for_age(roth, age)
             if roth_max_out:
                 roth_contrib_cap = roth_limit
             if year_income <= roth_income_limit:
@@ -460,7 +514,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
                 pending_roth = contrib
                 available -= contrib
 
-            want = float(taxable.get("contribution", 0.0))
+            want = _contribution_for_age(taxable, age)
             contrib = min(available, want)
             pending_taxable = contrib
             available -= contrib
@@ -469,7 +523,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         available -= income_tax
 
         def _cover_need(need: float) -> None:
-            nonlocal withdraw_tax, year_withdrawals, realized_gains
+            nonlocal withdraw_tax, year_withdrawals, realized_gains, cg_tax_paid
             while need > 1e-9:
                 take = min(cash.get("balance", 0.0), need)
                 if take > 0:
@@ -492,6 +546,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
                     cg_tax = tax_calc.compute_capital_gains_tax(gain, filing_status=filing_status)
                     if cg_tax > 0:
                         withdraw_tax += cg_tax
+                        cg_tax_paid += cg_tax
                         need += cg_tax
                     continue
                 bal = pre_tax.get("balance", 0.0)
@@ -525,6 +580,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
             state_tax = tax_calc.compute_state_tax(year_income + realized_gains, state=state, filing_status=filing_status)
             if state_tax > 0:
                 withdraw_tax += state_tax
+                state_tax_paid += state_tax
                 _cover_need(state_tax)
 
         # update Roth limit for "max out" option
@@ -670,11 +726,16 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         for k, v in (("pre_tax", pre_tax), ("roth", roth), ("taxable", taxable), ("cash", cash)):
             acct_series[k].append(v.get("balance", 0.0))
 
+        ordinary_tax = income_tax + conv_tax + (withdraw_tax - cg_tax_paid - state_tax_paid)
+
         ledger["age"].append(age)
         ledger["income"].append(year_income)
         ledger["expenses"].append(year_expenses)
         ledger["withdrawals"].append(year_withdrawals)
-        ledger["taxes"].append(income_tax + conv_tax + withdraw_tax)
+        ledger["taxes"].append(ordinary_tax + cg_tax_paid + state_tax_paid)
+        ledger["tax_ordinary"].append(ordinary_tax)
+        ledger["tax_cap_gains"].append(cg_tax_paid)
+        ledger["tax_state"].append(state_tax_paid)
         ledger["roth_conversion"].append(gross_conv)     # visibility
         ledger["conversion_tax"].append(conv_tax)
         ledger["pre_tax"].append(pre_tax.get("balance", 0.0))
