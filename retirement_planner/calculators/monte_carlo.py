@@ -8,6 +8,13 @@ from . import rmd
 def _draw_return(mean: float, stdev: float, rng: np.random.Generator) -> float:
     return rng.normal(loc=mean, scale=stdev)
 
+def _contribution_for_age(acct: Dict, age: int) -> float:
+    sched = acct.get("contribution_schedule")
+    if isinstance(sched, dict):
+        return float(sched.get(age, sched.get(str(age), 0.0)))
+    return float(acct.get("contribution", 0.0))
+
+
 def _decide_conversion(prior_pre_tax_balance: float, age: int, rc: Dict) -> float:
     """Gross amount to convert this year: cap * prior pre-tax balance within [start_age, end_age]."""
     if not rc:
@@ -101,34 +108,38 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
         available = year_income - year_expenses
 
         if age < retire_age and available > 0:
-            want = float(pre_tax_401k.get("contribution", 0.0))
-            contrib = min(available, want, 23000.0)
-            pre_tax_401k["balance"] += contrib
+            want = _contribution_for_age(pre_tax_401k, age)
+            cap = want if pre_tax_401k.get('contribution_schedule') else 23000.0
+            contrib = min(available, want, cap)
+            pre_tax_401k['balance'] += contrib
             available -= contrib
 
-            want = float(roth_401k.get("contribution", 0.0))
-            contrib = min(available, want, 23000.0)
-            roth_401k["balance"] += contrib
+            want = _contribution_for_age(roth_401k, age)
+            cap = want if roth_401k.get('contribution_schedule') else 23000.0
+            contrib = min(available, want, cap)
+            roth_401k['balance'] += contrib
             available -= contrib
 
-            want = float(pre_tax_ira.get("contribution", 0.0))
-            contrib = min(available, want, 7000.0)
-            pre_tax_ira["balance"] += contrib
+            want = _contribution_for_age(pre_tax_ira, age)
+            cap = want if pre_tax_ira.get('contribution_schedule') else 7000.0
+            contrib = min(available, want, cap)
+            pre_tax_ira['balance'] += contrib
             available -= contrib
 
-            want = float(roth_ira.get("contribution", 0.0))
+            want = _contribution_for_age(roth_ira, age)
             if year_income <= roth_income_limit:
-                contrib = min(available, want, 7000.0)
-                roth_ira["balance"] += contrib
+                cap = want if roth_ira.get('contribution_schedule') else 7000.0
+                contrib = min(available, want, cap)
+                roth_ira['balance'] += contrib
                 available -= contrib
 
-            want = float(taxable.get("contribution", 0.0))
+            want = _contribution_for_age(taxable, age)
             contrib = min(available, want)
-            taxable["balance"] += contrib
+            taxable['balance'] += contrib
             available -= contrib
 
             if available > 0:
-                cash["balance"] = cash.get("balance", 0.0) + available
+                cash['balance'] = cash.get('balance', 0.0) + available
                 available = 0.0
 
         if available < 0:

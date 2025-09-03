@@ -1,5 +1,6 @@
 import streamlit as st
 from retirement_planner.calculators.social_security import estimate_pia, social_security_benefit
+from retirement_planner.calculators.roth import roth_ira_max_schedule
 
 # Stable widget keys so we can programmatically set values on load
 WIDGET_KEYS = {
@@ -142,6 +143,10 @@ def plan_form():
             value=_d("roth_ira_contrib", 0.0), key=WIDGET_KEYS["roth_ira_contrib"],
             help="Maximum $7,000/yr (2024) and subject to income limits.",
         )
+        if st.button("Max out every year", key="btn_roth_ira_max"):
+            schedule = roth_ira_max_schedule(int(current_age), int(retire_age))
+            st.session_state["roth_ira_contrib_schedule"] = schedule
+            st.session_state[WIDGET_KEYS["roth_ira_contrib"]] = schedule.get(int(current_age), 0.0)
         roth_ira_mean = st.number_input(
             "Assumed mean return", step=0.005,
             value=_d("roth_ira_mean", 0.06), key=WIDGET_KEYS["roth_ira_mean"],
@@ -293,6 +298,7 @@ def plan_form():
         "roth_ira": {
             "balance": float(roth_ira_balance),
             "contribution": float(roth_ira_contrib),
+            "contribution_schedule": st.session_state.get("roth_ira_contrib_schedule", {}),
             "mean_return": float(roth_ira_mean),
             "stdev_return": 0.12,
         },
