@@ -3,7 +3,7 @@ from typing import Dict, List
 import numpy as np
 
 # RMD rules are in a sibling module
-from . import rmd
+from . import rmd, taxes as tax_calc
 
 def _draw_return(mean: float, stdev: float, rng: np.random.Generator) -> float:
     return rng.normal(loc=mean, scale=stdev)
@@ -363,6 +363,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
     pre_tax = acc.get("pre_tax", {}).copy()
     roth = acc.get("roth", {}).copy()
     taxable = acc.get("taxable", {}).copy()
+    taxable.setdefault("basis", taxable.get("balance", 0.0))
     cash = acc.get("cash", {}).copy()
 
     pre_tax_tax_rate = float(pre_tax.get("withdrawal_tax_rate", 0.0))
@@ -391,6 +392,9 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
 
     correlate = bool(plan.get("assumptions", {}).get("returns_correlated", True))
     rc = plan.get("roth_conversion", {}) or {}
+
+    state = plan.get("state")
+    filing_status = plan.get("filing_status", "single")
 
     # Withdrawal strategy controls how retirement expenses are funded
     strategy = plan.get("withdrawal_strategy", "standard")
@@ -438,6 +442,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         # --- handle contributions / deficits before retirement ---
         year_withdrawals = 0.0
         withdraw_tax = 0.0
+        realized_gains = 0.0
         available = year_income - year_expenses
 
         pending_pre = pending_roth = pending_taxable = 0.0
@@ -463,45 +468,64 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         income_tax = year_income * income_tax_rate
         available -= income_tax
 
+        def _cover_need(need: float) -> None:
+            nonlocal withdraw_tax, year_withdrawals, realized_gains
+            while need > 1e-9:
+                take = min(cash.get("balance", 0.0), need)
+                if take > 0:
+                    cash["balance"] -= take
+                    need -= take
+                    year_withdrawals += take
+                    continue
+                bal = taxable.get("balance", 0.0)
+                if need > 0 and bal > 0:
+                    gross = min(bal, need)
+                    basis = taxable.get("basis", bal)
+                    basis_ratio = basis / bal if bal > 0 else 0.0
+                    basis_used = gross * basis_ratio
+                    gain = gross - basis_used
+                    taxable["balance"] -= gross
+                    taxable["basis"] = basis - basis_used
+                    need -= gross
+                    year_withdrawals += gross
+                    realized_gains += gain
+                    cg_tax = tax_calc.compute_capital_gains_tax(gain, filing_status=filing_status)
+                    if cg_tax > 0:
+                        withdraw_tax += cg_tax
+                        need += cg_tax
+                    continue
+                bal = pre_tax.get("balance", 0.0)
+                if need > 0 and bal > 0:
+                    rate = pre_tax_tax_rate
+                    gross = min(bal, need / (1 - rate) if rate < 1 else need)
+                    net = gross * (1 - rate)
+                    pre_tax["balance"] -= gross
+                    need -= net
+                    year_withdrawals += gross
+                    withdraw_tax += gross * rate
+                    continue
+                bal = roth.get("balance", 0.0)
+                if need > 0 and bal > 0:
+                    take = min(bal, need)
+                    roth["balance"] -= take
+                    need -= take
+                    year_withdrawals += take
+                    continue
+                break
+
         # If expenses exceed income or taxes, draw from accounts
         if available < 0:
-            need = -available
-            # cash first
-            take = min(cash.get("balance", 0.0), need)
-            cash["balance"] -= take
-            need -= take
-            year_withdrawals += take
-
-            # taxable next (with tax)
-            if need > 0:
-                rate = taxable_tax_rate
-                gross = min(taxable.get("balance", 0.0), need / (1 - rate) if rate < 1 else need)
-                net = gross * (1 - rate)
-                taxable["balance"] -= gross
-                need -= net
-                year_withdrawals += gross
-                withdraw_tax += gross * rate
-
-            # pre-tax with tax impact
-            if need > 0:
-                rate = pre_tax_tax_rate
-                gross = min(pre_tax.get("balance", 0.0), need / (1 - rate) if rate < 1 else need)
-                net = gross * (1 - rate)
-                pre_tax["balance"] -= gross
-                need -= net
-                year_withdrawals += gross
-                withdraw_tax += gross * rate
-
-            # roth last resort
-            if need > 0:
-                take = min(roth.get("balance", 0.0), need)
-                roth["balance"] -= take
-                need -= take
-                year_withdrawals += take
+            _cover_need(-available)
 
         if available > 0:
             cash["balance"] = cash.get("balance", 0.0) + available
             available = 0.0
+
+        if state:
+            state_tax = tax_calc.compute_state_tax(year_income + realized_gains, state=state, filing_status=filing_status)
+            if state_tax > 0:
+                withdraw_tax += state_tax
+                _cover_need(state_tax)
 
         # update Roth limit for "max out" option
         if roth_max_out:
@@ -523,6 +547,7 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
         pre_tax["balance"] += pending_pre
         roth["balance"]    += pending_roth
         taxable["balance"] += pending_taxable
+        taxable["basis"] = taxable.get("basis", 0.0) + pending_taxable
         # cash balance kept flat in this simple model
 
         # --- Roth conversions (apply using prior pre-tax balance base) ---
