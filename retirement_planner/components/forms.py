@@ -143,10 +143,20 @@ def plan_form():
             value=_d("roth_ira_contrib", 0.0), key=WIDGET_KEYS["roth_ira_contrib"],
             help="Maximum $7,000/yr (2024) and subject to income limits.",
         )
-        if st.button("Max out every year", key="btn_roth_ira_max"):
-            schedule = roth_ira_max_schedule(int(current_age), int(retire_age))
+        def _set_roth_ira_max():
+            schedule = roth_ira_max_schedule(
+                int(st.session_state[WIDGET_KEYS["current_age"]]),
+                int(st.session_state[WIDGET_KEYS["retire_age"]]),
+            )
             st.session_state["roth_ira_contrib_schedule"] = schedule
-            st.session_state[WIDGET_KEYS["roth_ira_contrib"]] = schedule.get(int(current_age), 0.0)
+            current = int(st.session_state[WIDGET_KEYS["current_age"]])
+            st.session_state[WIDGET_KEYS["roth_ira_contrib"]] = schedule.get(current, 0.0)
+
+        st.button(
+            "Max out every year",
+            key="btn_roth_ira_max",
+            on_click=_set_roth_ira_max,
+        )
         roth_ira_mean = st.number_input(
             "Assumed mean return", step=0.005,
             value=_d("roth_ira_mean", 0.06), key=WIDGET_KEYS["roth_ira_mean"],
