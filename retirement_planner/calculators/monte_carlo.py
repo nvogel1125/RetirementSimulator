@@ -326,8 +326,9 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
 def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
     """Run ``n_paths`` Monte Carlo simulations for ``plan``.
 
-    This version pre-allocates numpy arrays for faster stacking and
-    percentile calculations, providing a modest speed improvement.
+    Paths are simulated using independent seeds so that the median path can
+    be re-simulated later without storing full ledgers for every run. Net
+    worth and account balances are pre-allocated for efficiency.
     """
     rng = np.random.default_rng(seed)
     ages = list(range(plan["current_age"], plan["end_age"] + 1))
@@ -338,14 +339,15 @@ def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
     # Pre-allocate arrays for net worth and account balances
     stacked = np.empty((n_paths, n_years))
     acct_series_stack = {k: np.empty((n_paths, n_years)) for k in acct_keys}
-    ledgers: List[dict] = []
 
-    for i in range(n_paths):
-        res = simulate_path(plan, rng)
+    # Generate independent seeds so we can later reproduce the median path
+    path_seeds = rng.integers(0, 2**63, size=n_paths, dtype=np.int64)
+
+    for i, s in enumerate(path_seeds):
+        res = simulate_path(plan, np.random.default_rng(s), return_ledger=False)
         stacked[i] = res["net_worth"]
         for k in acct_keys:
             acct_series_stack[k][i] = res["acct_series"][k]
-        ledgers.append(res["ledger"])
 
     # Percentile fan
     p10 = np.percentile(stacked, 10, axis=0)
@@ -355,7 +357,10 @@ def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
     # median path by terminal NW
     terminal = stacked[:, -1]
     median_idx = int(np.argmin(np.abs(terminal - np.median(terminal))))
-    ledger_median = ledgers[median_idx]
+    # Re-simulate the median path to obtain its ledger only
+    ledger_median = simulate_path(
+        plan, np.random.default_rng(path_seeds[median_idx])
+    )["ledger"]
 
     acct_series_median = {
         k: np.median(acct_series_stack[k], axis=0).tolist() for k in acct_keys
@@ -417,7 +422,21 @@ def max_spending(
     plan["expenses"]["baseline"] = original
     return low
 
-def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
+def simulate_path(plan: dict, rng: np.random.Generator, return_ledger: bool = True) -> dict:
+    """Simulate a single Monte Carlo path.
+
+    Parameters
+    ----------
+    plan: dict
+        Input plan configuration.
+    rng: numpy.random.Generator
+        Random number generator for stochastic components.
+    return_ledger: bool, optional
+        Whether to collect and return the detailed yearly ledger. Skipping
+        ledger collection makes the function faster and lighter when only
+        summary statistics are needed.
+    """
+
     acc = plan.get("accounts", {})
 
     # Aggregate split account types if needed
@@ -531,13 +550,15 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
     ages = list(range(curr, end + 1))
     net_worth: List[float] = []
 
-    ledger = {
-        "age": [], "income": [], "expenses": [], "withdrawals": [], "taxes": [],
-        "tax_ordinary": [], "tax_cap_gains": [], "tax_state": [],
-        "contrib_pre_tax": [], "contrib_roth": [], "contrib_taxable": [], "contrib_cash": [],
-        "roth_conversion": [], "conversion_tax": [],
-        "pre_tax": [], "roth": [], "taxable": [], "cash": [], "net_worth": []
-    }
+    ledger = None
+    if return_ledger:
+        ledger = {
+            "age": [], "income": [], "expenses": [], "withdrawals": [], "taxes": [],
+            "tax_ordinary": [], "tax_cap_gains": [], "tax_state": [],
+            "contrib_pre_tax": [], "contrib_roth": [], "contrib_taxable": [], "contrib_cash": [],
+            "roth_conversion": [], "conversion_tax": [],
+            "pre_tax": [], "roth": [], "taxable": [], "cash": [], "net_worth": []
+        }
     acct_series = {k: [] for k in ["pre_tax", "roth", "taxable", "cash"]}
 
     # loop state balance at the start of each year is "prior-year end"
@@ -795,29 +816,32 @@ def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
 
         ordinary_tax = income_tax + conv_tax + (withdraw_tax - cg_tax_paid - state_tax_paid)
 
-        ledger["age"].append(age)
-        ledger["income"].append(year_income)
-        ledger["expenses"].append(year_expenses)
-        ledger["withdrawals"].append(year_withdrawals)
-        ledger["taxes"].append(ordinary_tax + cg_tax_paid + state_tax_paid)
-        ledger["tax_ordinary"].append(ordinary_tax)
-        ledger["tax_cap_gains"].append(cg_tax_paid)
-        ledger["tax_state"].append(state_tax_paid)
-        ledger["contrib_pre_tax"].append(pending_pre)
-        ledger["contrib_roth"].append(pending_roth)
-        ledger["contrib_taxable"].append(pending_taxable)
-        ledger["contrib_cash"].append(pending_cash)
-        ledger["roth_conversion"].append(gross_conv)     # visibility
-        ledger["conversion_tax"].append(conv_tax)
-        ledger["pre_tax"].append(pre_tax.get("balance", 0.0))
-        ledger["roth"].append(roth.get("balance", 0.0))
-        ledger["taxable"].append(taxable.get("balance", 0.0))
-        ledger["cash"].append(cash.get("balance", 0.0))
-        ledger["net_worth"].append(total_nw)
+        if return_ledger:
+            ledger["age"].append(age)
+            ledger["income"].append(year_income)
+            ledger["expenses"].append(year_expenses)
+            ledger["withdrawals"].append(year_withdrawals)
+            ledger["taxes"].append(ordinary_tax + cg_tax_paid + state_tax_paid)
+            ledger["tax_ordinary"].append(ordinary_tax)
+            ledger["tax_cap_gains"].append(cg_tax_paid)
+            ledger["tax_state"].append(state_tax_paid)
+            ledger["contrib_pre_tax"].append(pending_pre)
+            ledger["contrib_roth"].append(pending_roth)
+            ledger["contrib_taxable"].append(pending_taxable)
+            ledger["contrib_cash"].append(pending_cash)
+            ledger["roth_conversion"].append(gross_conv)     # visibility
+            ledger["conversion_tax"].append(conv_tax)
+            ledger["pre_tax"].append(pre_tax.get("balance", 0.0))
+            ledger["roth"].append(roth.get("balance", 0.0))
+            ledger["taxable"].append(taxable.get("balance", 0.0))
+            ledger["cash"].append(cash.get("balance", 0.0))
+            ledger["net_worth"].append(total_nw)
 
-    return {
+    result = {
         "ages": ages,
         "net_worth": net_worth,
         "acct_series": {k: np.array(v) for k, v in acct_series.items()},
-        "ledger": ledger,
     }
+    if return_ledger:
+        result["ledger"] = ledger
+    return result
