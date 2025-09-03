@@ -19,7 +19,7 @@ This repository contains the **NVision Retirement Simulator**, a free, open–so
   1. **Home** – displays your probability of success as a gauge, fan charts of projected account balances and income bands, and summary metrics.
   2. **Scenario Compare** – summarises each scenario’s key performance indicators in a sortable table and small multiple charts.
   3. **Roth Conversion Explorer** – allows you to vary conversion limits and tax payment options.  A heatmap shows how different conversion schedules affect lifetime taxes and success probability.
-  4. **Ledger/Audit** – exposes a year‑by‑year ledger of starting balance, contributions, investment returns, withdrawals, RMDs, conversions and taxes by account.  You can export this ledger to CSV.
+  4. **Ledger/Audit** – exposes a year‑by‑year ledger of account balances, per‑account contributions and withdrawals with a breakdown of ordinary, capital‑gains and state taxes.  The net‑worth column is highlighted and the ledger can be exported to CSV.
 
 * **Exports** – charts can be saved as PNG files; tabular data can be exported as CSV; and a comprehensive **Plan Summary** PDF bundles the main charts and metrics into a single document.  All exports occur locally; no personal data leaves your machine.
 
