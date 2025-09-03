@@ -1,68 +1,192 @@
 {
-  "federal": {
-    "single": {
-      "brackets": [
-        {
-          "rate": 0.1,
-          "start": 0,
-          "end": 11925
+  "2024": {
+    "federal": {
+      "single": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 11600},
+          {"rate": 0.12, "start": 11600, "end": 47150},
+          {"rate": 0.22, "start": 47150, "end": 100525},
+          {"rate": 0.24, "start": 100525, "end": 191950},
+          {"rate": 0.32, "start": 191950, "end": 243725},
+          {"rate": 0.35, "start": 243725, "end": 609350},
+          {"rate": 0.37, "start": 609350, "end": null}
+        ],
+        "standard_deduction": 14600,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 47025},
+          {"rate": 0.15, "start": 47025, "end": 518900},
+          {"rate": 0.20, "start": 518900, "end": null}
+        ]
+      },
+      "married_joint": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 23200},
+          {"rate": 0.12, "start": 23200, "end": 94299},
+          {"rate": 0.22, "start": 94299, "end": 201050},
+          {"rate": 0.24, "start": 201050, "end": 383900},
+          {"rate": 0.32, "start": 383900, "end": 487450},
+          {"rate": 0.35, "start": 487450, "end": 731200},
+          {"rate": 0.37, "start": 731200, "end": null}
+        ],
+        "standard_deduction": 29200,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 94050},
+          {"rate": 0.15, "start": 94050, "end": 583750},
+          {"rate": 0.20, "start": 583750, "end": null}
+        ]
+      },
+      "married_separate": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 11600},
+          {"rate": 0.12, "start": 11600, "end": 47150},
+          {"rate": 0.22, "start": 47150, "end": 100525},
+          {"rate": 0.24, "start": 100525, "end": 191950},
+          {"rate": 0.32, "start": 191950, "end": 243725},
+          {"rate": 0.35, "start": 243725, "end": 365600},
+          {"rate": 0.37, "start": 365600, "end": null}
+        ],
+        "standard_deduction": 14600,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 47025},
+          {"rate": 0.15, "start": 47025, "end": 291850},
+          {"rate": 0.20, "start": 291850, "end": null}
+        ]
+      },
+      "head_of_household": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 16550},
+          {"rate": 0.12, "start": 16550, "end": 63100},
+          {"rate": 0.22, "start": 63100, "end": 100500},
+          {"rate": 0.24, "start": 100500, "end": 191950},
+          {"rate": 0.32, "start": 191950, "end": 243700},
+          {"rate": 0.35, "start": 243700, "end": 609350},
+          {"rate": 0.37, "start": 609350, "end": null}
+        ],
+        "standard_deduction": 21900,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 47025},
+          {"rate": 0.15, "start": 47025, "end": 551350},
+          {"rate": 0.20, "start": 551350, "end": null}
+        ]
+      }
+    },
+    "state": {
+      "MI": {
+        "rate": 0.04,
+        "standard_deduction": 0
+      },
+      "CA": {
+        "single": {
+          "brackets": [
+            {"rate": 0.01, "start": 0, "end": 9575},
+            {"rate": 0.02, "start": 9575, "end": 22875},
+            {"rate": 0.04, "start": 22875, "end": 34250},
+            {"rate": 0.06, "start": 34250, "end": 48435},
+            {"rate": 0.08, "start": 48435, "end": 61215},
+            {"rate": 0.093, "start": 61215, "end": 312686},
+            {"rate": 0.103, "start": 312686, "end": 375221},
+            {"rate": 0.113, "start": 375221, "end": 625369},
+            {"rate": 0.123, "start": 625369, "end": null}
+          ],
+          "standard_deduction": 5202
         },
-        {
-          "rate": 0.12,
-          "start": 11925,
-          "end": 48475
-        },
-        {
-          "rate": 0.22,
-          "start": 48475,
-          "end": 103350
-        },
-        {
-          "rate": 0.24,
-          "start": 103350,
-          "end": 197300
-        },
-        {
-          "rate": 0.32,
-          "start": 197300,
-          "end": 250525
-        },
-        {
-          "rate": 0.35,
-          "start": 250525,
-          "end": 626350
-        },
-        {
-          "rate": 0.37,
-          "start": 626350,
-          "end": null
+        "married_joint": {
+          "brackets": [
+            {"rate": 0.01, "start": 0, "end": 19150},
+            {"rate": 0.02, "start": 19150, "end": 45750},
+            {"rate": 0.04, "start": 45750, "end": 68500},
+            {"rate": 0.06, "start": 68500, "end": 96870},
+            {"rate": 0.08, "start": 96870, "end": 122430},
+            {"rate": 0.093, "start": 122430, "end": 625372},
+            {"rate": 0.103, "start": 625372, "end": 750442},
+            {"rate": 0.113, "start": 750442, "end": 1000000},
+            {"rate": 0.123, "start": 1000000, "end": null}
+          ],
+          "standard_deduction": 10404
         }
-      ],
-      "standard_deduction": 6663.64,
-      "cap_gains": [
-        {
-          "rate": 0.0,
-          "start": 0,
-          "end": 48333.3333333333
-        },
-        {
-          "rate": 0.15,
-          "start": 48333.3333333333,
-          "end": 533400
-        },
-        {
-          "rate": 0.2,
-          "start": 533400,
-          "end": null
-        }
-      ]
+      },
+      "TX": {
+        "rate": 0.0,
+        "standard_deduction": 0
+      }
     }
   },
-  "state": {
-    "MI": {
-      "rate": 0.04,
-      "standard_deduction": 0,
-      "cap_gains": []
+  "2023": {
+    "federal": {
+      "single": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 11000},
+          {"rate": 0.12, "start": 11000, "end": 44725},
+          {"rate": 0.22, "start": 44725, "end": 95375},
+          {"rate": 0.24, "start": 95375, "end": 182100},
+          {"rate": 0.32, "start": 182100, "end": 231250},
+          {"rate": 0.35, "start": 231250, "end": 578125},
+          {"rate": 0.37, "start": 578125, "end": null}
+        ],
+        "standard_deduction": 13850,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 44625},
+          {"rate": 0.15, "start": 44625, "end": 492300},
+          {"rate": 0.20, "start": 492300, "end": null}
+        ]
+      },
+      "married_joint": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 22000},
+          {"rate": 0.12, "start": 22000, "end": 89450},
+          {"rate": 0.22, "start": 89450, "end": 190750},
+          {"rate": 0.24, "start": 190750, "end": 364200},
+          {"rate": 0.32, "start": 364200, "end": 462500},
+          {"rate": 0.35, "start": 462500, "end": 693750},
+          {"rate": 0.37, "start": 693750, "end": null}
+        ],
+        "standard_deduction": 27700,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 89250},
+          {"rate": 0.15, "start": 89250, "end": 553850},
+          {"rate": 0.20, "start": 553850, "end": null}
+        ]
+      },
+      "married_separate": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 11000},
+          {"rate": 0.12, "start": 11000, "end": 44725},
+          {"rate": 0.22, "start": 44725, "end": 95375},
+          {"rate": 0.24, "start": 95375, "end": 182100},
+          {"rate": 0.32, "start": 182100, "end": 231250},
+          {"rate": 0.35, "start": 231250, "end": 346875},
+          {"rate": 0.37, "start": 346875, "end": null}
+        ],
+        "standard_deduction": 13850,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 44625},
+          {"rate": 0.15, "start": 44625, "end": 276900},
+          {"rate": 0.20, "start": 276900, "end": null}
+        ]
+      },
+      "head_of_household": {
+        "brackets": [
+          {"rate": 0.10, "start": 0, "end": 15700},
+          {"rate": 0.12, "start": 15700, "end": 59850},
+          {"rate": 0.22, "start": 59850, "end": 95350},
+          {"rate": 0.24, "start": 95350, "end": 182100},
+          {"rate": 0.32, "start": 182100, "end": 231250},
+          {"rate": 0.35, "start": 231250, "end": 578100},
+          {"rate": 0.37, "start": 578100, "end": null}
+        ],
+        "standard_deduction": 20800,
+        "cap_gains": [
+          {"rate": 0.0, "start": 0, "end": 59750},
+          {"rate": 0.15, "start": 59750, "end": 523050},
+          {"rate": 0.20, "start": 523050, "end": null}
+        ]
+      }
+    },
+    "state": {
+      "MI": {
+        "rate": 0.0425,
+        "standard_deduction": 0
+      }
     }
   }
 }
