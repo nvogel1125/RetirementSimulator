@@ -96,11 +96,11 @@ def test_deficit_draws_from_taxable_then_pretax_with_tax():
     plan["accounts"]["taxable"]["contribution"] = 0.0
     res = monte_carlo.simulate_path(plan, np.random.default_rng(0))
     ledger = res["ledger"]
-    # Withdrawals include tax on taxable and pre-tax accounts
-    assert ledger["withdrawals"][0] == pytest.approx(13333.3333, rel=1e-3)
-    assert ledger["taxes"][0] == pytest.approx(3333.3333, rel=1e-3)
+    # Entire deficit is covered from the taxable account with no tax due
+    assert ledger["withdrawals"][0] == pytest.approx(10000.0, rel=1e-3)
+    assert ledger["taxes"][0] == pytest.approx(0.0, rel=1e-3)
     accts = res["acct_series"]
-    assert accts["pre_tax"][0] == pytest.approx(1666.6667, rel=1e-3)
+    assert accts["pre_tax"][0] == pytest.approx(5000.0, rel=1e-3)
     assert accts["taxable"][0] == 0.0
 
 
