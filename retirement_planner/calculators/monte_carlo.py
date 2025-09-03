@@ -324,20 +324,30 @@ def _simulate_path_split(plan: dict, rng: np.random.Generator) -> dict:
     }
 
 def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
+    """Run ``n_paths`` Monte Carlo simulations for ``plan``.
+
+    This version pre-allocates numpy arrays for faster stacking and
+    percentile calculations, providing a modest speed improvement.
+    """
     rng = np.random.default_rng(seed)
     ages = list(range(plan["current_age"], plan["end_age"] + 1))
+    n_years = len(ages)
 
-    paths_networth: List[np.ndarray] = []
-    acct_series_paths: List[Dict[str, np.ndarray]] = []
+    acct_keys = ["pre_tax", "roth", "taxable", "cash"]
+
+    # Pre-allocate arrays for net worth and account balances
+    stacked = np.empty((n_paths, n_years))
+    acct_series_stack = {k: np.empty((n_paths, n_years)) for k in acct_keys}
     ledgers: List[dict] = []
 
-    for _ in range(n_paths):
+    for i in range(n_paths):
         res = simulate_path(plan, rng)
-        paths_networth.append(np.array(res["net_worth"]))
-        acct_series_paths.append(res["acct_series"])
+        stacked[i] = res["net_worth"]
+        for k in acct_keys:
+            acct_series_stack[k][i] = res["acct_series"][k]
         ledgers.append(res["ledger"])
 
-    stacked = np.vstack(paths_networth)  # n_paths x years
+    # Percentile fan
     p10 = np.percentile(stacked, 10, axis=0)
     p50 = np.percentile(stacked, 50, axis=0)
     p90 = np.percentile(stacked, 90, axis=0)
@@ -347,13 +357,12 @@ def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
     median_idx = int(np.argmin(np.abs(terminal - np.median(terminal))))
     ledger_median = ledgers[median_idx]
 
-    acct_keys = ["pre_tax", "roth", "taxable", "cash"]
     acct_series_median = {
-        k: np.median(np.vstack([ap[k] for ap in acct_series_paths]), axis=0).tolist()
-        for k in acct_keys
+        k: np.median(acct_series_stack[k], axis=0).tolist() for k in acct_keys
     }
 
-    success_prob = float(np.mean(terminal >= 0.0))
+    # Success if ending net worth remains strictly positive
+    success_prob = float(np.mean(terminal > 0.0))
 
     return {
         "ages": ages,
@@ -367,6 +376,46 @@ def simulate(plan: dict, n_paths: int = 1000, seed: int | None = None) -> dict:
         "acct_series_median": acct_series_median,
         "ledger_median": ledger_median,
     }
+
+
+def max_spending(
+    plan: dict,
+    target_success: float,
+    n_paths: int = 1000,
+    seed: int | None = None,
+    tol: float = 100.0,
+) -> float:
+    """Binary search for the largest baseline expense meeting ``target_success``.
+
+    The plan dict is temporarily mutated but restored before returning.
+    ``tol`` specifies the search precision in dollars.
+    """
+
+    original = float(plan.get("expenses", {}).get("baseline", 0.0))
+
+    # Establish a high spending bound that fails the target success probability
+    low, high = 0.0, max(1.0, original)
+    while True:
+        plan["expenses"]["baseline"] = high
+        prob = simulate(plan, n_paths=n_paths, seed=seed)["success_probability"]
+        if prob < target_success:
+            break
+        high *= 2.0
+        if high > 1e7:  # unreasonable upper bound
+            break
+
+    # Binary search between low and high
+    while high - low > tol:
+        mid = (low + high) / 2.0
+        plan["expenses"]["baseline"] = mid
+        prob = simulate(plan, n_paths=n_paths, seed=seed)["success_probability"]
+        if prob >= target_success:
+            low = mid
+        else:
+            high = mid
+
+    plan["expenses"]["baseline"] = original
+    return low
 
 def simulate_path(plan: dict, rng: np.random.Generator) -> dict:
     acc = plan.get("accounts", {})

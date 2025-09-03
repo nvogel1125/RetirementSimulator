@@ -564,6 +564,24 @@ with kcol2:
     st.metric(label="Simulation size", value=f"{n_paths:,} paths")
     st.caption("Number of randomized return paths used (seed = 42).")
 
+st.subheader("Spending Capacity")
+target_success = st.slider(
+    "Target success probability",
+    min_value=0.5,
+    max_value=1.0,
+    value=0.9,
+    step=0.01,
+)
+if st.button("Calculate max baseline spending"):
+    with st.spinner("Optimizing..."):
+        max_spend = monte_carlo.max_spending(
+            plan, target_success, n_paths=n_paths, seed=42
+        )
+    st.metric("Max baseline annual spending", f"${max_spend:,.0f}")
+    st.caption(
+        f"Maximum constant annual spending to maintain ≥{target_success:.0%} success probability."
+    )
+
 st.divider()
 
 # --- Main charts: net worth fan + median account mix ---
